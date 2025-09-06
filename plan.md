@@ -23,24 +23,24 @@
 - [x] should_initialize_deposit_to_zero_by_default
 
 #### Test 2: User Repository - Firestore Integration
-- [ ] should_save_user_to_firestore
-- [ ] should_retrieve_user_by_id
-- [ ] should_list_all_users
+- [x] should_save_user_to_firestore
+- [x] should_retrieve_user_by_id
+- [x] should_list_all_users
 
 #### Test 3: User Model - Deposit Management
-- [ ] should_add_deposit_amount
-- [ ] should_subtract_deposit_amount
-- [ ] should_not_allow_negative_deposit
+- [x] should_add_deposit_amount
+- [x] should_subtract_deposit_amount
+- [x] should_not_allow_negative_deposit
 
 #### Test 4: Store Model - Basic Store Management
-- [ ] should_create_store_with_name
-- [ ] should_enable_coupon_system_for_store
-- [ ] should_set_coupon_goal_for_store
+- [x] should_create_store_with_name
+- [x] should_enable_coupon_system_for_store
+- [x] should_set_coupon_goal_for_store
 
 #### Test 5: Store Repository - Firestore Integration
-- [ ] should_save_store_to_firestore
-- [ ] should_retrieve_store_by_id
-- [ ] should_find_store_by_name
+- [x] should_save_store_to_firestore
+- [x] should_retrieve_store_by_id
+- [x] should_find_store_by_name
 
 ### Phase 2: Receipt Processing & Transaction Management
 
