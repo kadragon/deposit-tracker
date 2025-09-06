@@ -19,8 +19,8 @@
 
 #### Test 1: User Model - Basic User Creation
 - [x] should_create_user_with_name_and_initial_deposit
-- [ ] should_validate_user_name_is_required
-- [ ] should_initialize_deposit_to_zero_by_default
+- [x] should_validate_user_name_is_required
+- [x] should_initialize_deposit_to_zero_by_default
 
 #### Test 2: User Repository - Firestore Integration
 - [ ] should_save_user_to_firestore
