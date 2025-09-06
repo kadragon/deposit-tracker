@@ -43,3 +43,31 @@ def test_should_not_allow_negative_deposit():
     
     with pytest.raises(ValueError, match="Insufficient deposit balance"):
         user.subtract_deposit(10000)
+
+
+def test_should_not_allow_negative_add_deposit():
+    user = User(name="홍길동", deposit=5000)
+    
+    with pytest.raises(ValueError, match="Deposit amount must be positive"):
+        user.add_deposit(-1000)
+
+
+def test_should_not_allow_zero_add_deposit():
+    user = User(name="홍길동", deposit=5000)
+    
+    with pytest.raises(ValueError, match="Deposit amount must be positive"):
+        user.add_deposit(0)
+
+
+def test_should_not_allow_negative_subtract_deposit():
+    user = User(name="홍길동", deposit=5000)
+    
+    with pytest.raises(ValueError, match="Amount to subtract must be positive"):
+        user.subtract_deposit(-1000)
+
+
+def test_should_not_allow_zero_subtract_deposit():
+    user = User(name="홍길동", deposit=5000)
+    
+    with pytest.raises(ValueError, match="Amount to subtract must be positive"):
+        user.subtract_deposit(0)
