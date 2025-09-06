@@ -67,19 +67,19 @@
 ### Phase 3: Coupon System
 
 #### Test 10: Coupon Model
-- [ ] should_create_coupon_for_user_and_store
-- [ ] should_increment_coupon_count
-- [ ] should_check_if_coupon_goal_reached
+- [x] should_create_coupon_for_user_and_store
+- [x] should_increment_coupon_count
+- [x] should_check_if_coupon_goal_reached
 
 #### Test 11: Coupon Service
-- [ ] should_award_coupon_for_purchase
-- [ ] should_not_award_coupon_if_disabled
-- [ ] should_reset_coupon_when_goal_reached
+- [x] should_award_coupon_for_purchase
+- [x] should_not_award_coupon_if_disabled
+- [x] should_reset_coupon_when_goal_reached
 
 #### Test 12: Coupon Repository
-- [ ] should_save_coupon_to_firestore
-- [ ] should_retrieve_coupons_by_user
-- [ ] should_update_coupon_count
+- [x] should_save_coupon_to_firestore
+- [x] should_retrieve_coupons_by_user
+- [x] should_update_coupon_count
 
 ### Phase 4: OCR Integration & Receipt Processing
 
