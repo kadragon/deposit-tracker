@@ -45,24 +45,24 @@
 ### Phase 2: Receipt Processing & Transaction Management
 
 #### Test 6: Receipt Model - Basic Receipt Structure
-- [ ] should_create_receipt_with_user_and_store
-- [ ] should_add_items_to_receipt
-- [ ] should_calculate_total_amount
+- [x] should_create_receipt_with_user_and_store
+- [x] should_add_items_to_receipt
+- [x] should_calculate_total_amount
 
 #### Test 7: Receipt Item Model
-- [ ] should_create_receipt_item_with_name_and_price
-- [ ] should_set_default_quantity_to_one
-- [ ] should_calculate_item_total
+- [x] should_create_receipt_item_with_name_and_price
+- [x] should_set_default_quantity_to_one
+- [x] should_calculate_item_total
 
 #### Test 8: Transaction Service - Deposit Usage
-- [ ] should_process_transaction_with_deposit
-- [ ] should_process_transaction_without_deposit
-- [ ] should_reject_transaction_if_insufficient_deposit
+- [x] should_process_transaction_with_deposit
+- [x] should_process_transaction_without_deposit
+- [x] should_reject_transaction_if_insufficient_deposit
 
 #### Test 9: Receipt Repository
-- [ ] should_save_receipt_to_firestore
-- [ ] should_retrieve_receipts_by_user
-- [ ] should_retrieve_receipts_by_date_range
+- [x] should_save_receipt_to_firestore
+- [x] should_retrieve_receipts_by_user
+- [x] should_retrieve_receipts_by_date_range
 
 ### Phase 3: Coupon System
 
