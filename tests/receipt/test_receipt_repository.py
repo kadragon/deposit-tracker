@@ -31,6 +31,21 @@ def test_should_save_receipt_to_firestore():
         assert receipt_id == "receipt123"
         mock_db.collection.assert_called_with("receipts")
         mock_collection.add.assert_called_once()
+        
+        # Verify the actual data content being saved
+        from google.cloud import firestore
+        
+        call_args, _ = mock_collection.add.call_args
+        saved_data = call_args[0]
+        
+        assert saved_data["user_id"] == "user123"
+        assert saved_data["store_id"] == "store123"
+        assert saved_data["total"] == "4000"  # Should be string for precision
+        assert len(saved_data["items"]) == 1
+        assert saved_data["items"][0]["name"] == "사과"
+        assert saved_data["items"][0]["price"] == "2000"  # Should be string for precision
+        assert saved_data["items"][0]["quantity"] == 2
+        assert saved_data["created_at"] == firestore.SERVER_TIMESTAMP
 
 
 def test_should_retrieve_receipts_by_user():

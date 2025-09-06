@@ -5,9 +5,9 @@ from decimal import Decimal
 @dataclass(frozen=True)
 class TransactionResult:
     success: bool
-    amount_paid: int
-    deposit_used: int
-    cash_paid: int
+    amount_paid: Decimal
+    deposit_used: Decimal
+    cash_paid: Decimal
 
 
 class TransactionService:
@@ -16,26 +16,27 @@ class TransactionService:
         
         if use_deposit:
             if receipt.user.deposit >= total_amount:
-                # Keep User.deposit as int to avoid ripple effects
-                receipt.user.subtract_deposit(int(total_amount))
+                # This assumes subtract_deposit can handle Decimal.
+                receipt.user.subtract_deposit(total_amount)
                 return TransactionResult(
                     success=True,
-                    amount_paid=int(total_amount),
-                    deposit_used=int(total_amount),
-                    cash_paid=0,
+                    amount_paid=total_amount,
+                    deposit_used=total_amount,
+                    cash_paid=Decimal("0"),
+                )
+            else:
+                # Insufficient deposit, transaction fails.
+                return TransactionResult(
+                    success=False,
+                    amount_paid=Decimal("0"),
+                    deposit_used=Decimal("0"),
+                    cash_paid=Decimal("0"),
                 )
         else:
-            # Process transaction without deposit (cash payment)
+            # Process transaction without deposit (cash payment).
             return TransactionResult(
                 success=True,
-                amount_paid=int(total_amount),
-                deposit_used=0,
-                cash_paid=int(total_amount),
+                amount_paid=total_amount,
+                deposit_used=Decimal("0"),
+                cash_paid=total_amount,
             )
-        
-        return TransactionResult(
-            success=False,
-            amount_paid=0,
-            deposit_used=0,
-            cash_paid=0
-        )
