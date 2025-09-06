@@ -7,6 +7,7 @@ from src.repositories.user_repository import UserRepository
 def test_should_save_user_to_firestore():
     # Arrange
     mock_firestore = Mock()
+    mock_collection = mock_firestore.collection.return_value
     repository = UserRepository(mock_firestore)
     user = User(name="홍길동", deposit=25000)
     
@@ -15,6 +16,8 @@ def test_should_save_user_to_firestore():
     
     # Assert
     mock_firestore.collection.assert_called_once_with("users")
+    expected_data = {"name": "홍길동", "deposit": 25000}
+    mock_collection.add.assert_called_once_with(expected_data)
     assert result is not None
 
 

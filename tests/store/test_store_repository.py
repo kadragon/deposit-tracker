@@ -7,6 +7,11 @@ from src.repositories.store_repository import StoreRepository
 def test_should_save_store_to_firestore():
     # Arrange
     mock_firestore = Mock()
+    mock_collection = mock_firestore.collection.return_value
+    mock_doc_ref = Mock()
+    mock_doc_ref.id = "generated_store_id"
+    mock_collection.add.return_value = (None, mock_doc_ref)
+    
     repository = StoreRepository(mock_firestore)
     store = Store(name="편의점A")
     
@@ -15,7 +20,13 @@ def test_should_save_store_to_firestore():
     
     # Assert
     mock_firestore.collection.assert_called_once_with("stores")
-    assert result is not None
+    expected_data = {
+        "name": "편의점A",
+        "coupon_enabled": False,
+        "coupon_goal": 0,
+    }
+    mock_collection.add.assert_called_once_with(expected_data)
+    assert result == "generated_store_id"
 
 
 def test_should_retrieve_store_by_id():
