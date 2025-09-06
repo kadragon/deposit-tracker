@@ -1,31 +1,36 @@
+from dataclasses import dataclass
+from decimal import Decimal
+
+
+@dataclass(frozen=True)
 class TransactionResult:
-    def __init__(self, success, amount_paid, deposit_used, cash_paid):
-        self.success = success
-        self.amount_paid = amount_paid
-        self.deposit_used = deposit_used
-        self.cash_paid = cash_paid
+    success: bool
+    amount_paid: int
+    deposit_used: int
+    cash_paid: int
 
 
 class TransactionService:
     def process_transaction(self, receipt, use_deposit=False):
-        total_amount = receipt.calculate_total()
+        total_amount: Decimal = receipt.calculate_total()
         
         if use_deposit:
             if receipt.user.deposit >= total_amount:
-                receipt.user.subtract_deposit(total_amount)
+                # Keep User.deposit as int to avoid ripple effects
+                receipt.user.subtract_deposit(int(total_amount))
                 return TransactionResult(
                     success=True,
-                    amount_paid=total_amount,
-                    deposit_used=total_amount,
-                    cash_paid=0
+                    amount_paid=int(total_amount),
+                    deposit_used=int(total_amount),
+                    cash_paid=0,
                 )
         else:
             # Process transaction without deposit (cash payment)
             return TransactionResult(
                 success=True,
-                amount_paid=total_amount,
+                amount_paid=int(total_amount),
                 deposit_used=0,
-                cash_paid=total_amount
+                cash_paid=int(total_amount),
             )
         
         return TransactionResult(
