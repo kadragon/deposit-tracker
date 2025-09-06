@@ -20,3 +20,26 @@ def test_should_initialize_deposit_to_zero_by_default():
     
     assert user.name == "홍길동"
     assert user.deposit == 0
+
+
+def test_should_add_deposit_amount():
+    user = User(name="홍길동", deposit=25000)
+    
+    user.add_deposit(10000)
+    
+    assert user.deposit == 35000
+
+
+def test_should_subtract_deposit_amount():
+    user = User(name="홍길동", deposit=25000)
+    
+    user.subtract_deposit(5000)
+    
+    assert user.deposit == 20000
+
+
+def test_should_not_allow_negative_deposit():
+    user = User(name="홍길동", deposit=5000)
+    
+    with pytest.raises(ValueError, match="Insufficient deposit balance"):
+        user.subtract_deposit(10000)
