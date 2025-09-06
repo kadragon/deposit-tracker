@@ -7,12 +7,5 @@ class CouponService:
         store = self.store_repository.get_by_id(store_id)
         if not store.coupon_enabled:
             return
-        
-        coupon = self.coupon_repository.get_by_user_and_store(user_id, store_id)
-        coupon.increment_count()
-        
-        if coupon.is_goal_reached(store.coupon_goal):
-            # Reset coupon when goal is reached
-            self.coupon_repository.update_count(user_id, store_id, 0)
-        else:
-            self.coupon_repository.update_count(user_id, store_id, coupon.count)
+        # Delegate atomic/consistency concerns to repository
+        self.coupon_repository.increment(user_id, store_id, store.coupon_goal)

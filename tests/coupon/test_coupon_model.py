@@ -39,3 +39,8 @@ def test_should_check_if_coupon_goal_not_reached():
     result = coupon.is_goal_reached(10)
     
     assert result is False
+
+
+def test_should_reject_negative_count():
+    with pytest.raises(ValueError):
+        Coupon(user_id="user123", store_id="store456", count=-1)

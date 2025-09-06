@@ -10,7 +10,8 @@ def test_should_save_store_to_firestore():
     mock_collection = mock_firestore.collection.return_value
     mock_doc_ref = Mock()
     mock_doc_ref.id = "generated_store_id"
-    mock_collection.add.return_value = (None, mock_doc_ref)
+    # Firestore add returns (DocumentReference, WriteResult)
+    mock_collection.add.return_value = (mock_doc_ref, Mock())
     
     repository = StoreRepository(mock_firestore)
     store = Store(name="편의점A")

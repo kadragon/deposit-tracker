@@ -15,8 +15,7 @@ def test_should_award_coupon_for_purchase():
     store.set_coupon_goal(10)
     mock_store_repo.get_by_id.return_value = store
     
-    existing_coupon = Coupon("user123", "store456", 3)
-    mock_coupon_repo.get_by_user_and_store.return_value = existing_coupon
+    # Repository handles increment internally
     
     service = CouponService(mock_coupon_repo, mock_store_repo)
     
@@ -25,8 +24,7 @@ def test_should_award_coupon_for_purchase():
     
     # Assert
     mock_store_repo.get_by_id.assert_called_once_with("store456")
-    mock_coupon_repo.get_by_user_and_store.assert_called_once_with("user123", "store456")
-    mock_coupon_repo.update_count.assert_called_once_with("user123", "store456", 4)
+    mock_coupon_repo.increment.assert_called_once_with("user123", "store456", 10)
 
 
 def test_should_not_award_coupon_if_disabled():
@@ -45,8 +43,7 @@ def test_should_not_award_coupon_if_disabled():
     
     # Assert
     mock_store_repo.get_by_id.assert_called_once_with("store456")
-    mock_coupon_repo.get_by_user_and_store.assert_not_called()
-    mock_coupon_repo.update_count.assert_not_called()
+    mock_coupon_repo.increment.assert_not_called()
 
 
 def test_should_reset_coupon_when_goal_reached():
@@ -59,9 +56,7 @@ def test_should_reset_coupon_when_goal_reached():
     store.set_coupon_goal(10)
     mock_store_repo.get_by_id.return_value = store
     
-    # Coupon at goal - 1
-    existing_coupon = Coupon("user123", "store456", 9)
-    mock_coupon_repo.get_by_user_and_store.return_value = existing_coupon
+    # Repository will handle reset when reaching goal
     
     service = CouponService(mock_coupon_repo, mock_store_repo)
     
@@ -70,6 +65,4 @@ def test_should_reset_coupon_when_goal_reached():
     
     # Assert
     mock_store_repo.get_by_id.assert_called_once_with("store456")
-    mock_coupon_repo.get_by_user_and_store.assert_called_once_with("user123", "store456")
-    # Should reset to 0 instead of setting to 10
-    mock_coupon_repo.update_count.assert_called_once_with("user123", "store456", 0)
+    mock_coupon_repo.increment.assert_called_once_with("user123", "store456", 10)

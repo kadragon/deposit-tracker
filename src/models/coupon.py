@@ -1,8 +1,11 @@
 class Coupon:
-    def __init__(self, user_id: str, store_id: str, count: int):
+    def __init__(self, user_id: str, store_id: str, count: int, id: str | None = None):
+        if int(count) < 0:
+            raise ValueError("Coupon count must be non-negative")
         self.user_id = user_id
         self.store_id = store_id
-        self.count = count
+        self.count = int(count)
+        self.id = id
     
     def increment_count(self):
         self.count += 1
@@ -19,8 +22,11 @@ class Coupon:
     
     @classmethod
     def from_dict(cls, data: dict):
+        # Defensive: clamp negative values to 0 on read
+        raw_count = int(data.get("count", 0))
+        safe_count = raw_count if raw_count >= 0 else 0
         return cls(
             user_id=data.get("user_id", ""),
             store_id=data.get("store_id", ""),
-            count=int(data.get("count", 0))
+            count=safe_count,
         )
