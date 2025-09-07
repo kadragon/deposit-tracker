@@ -66,6 +66,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "google-cloud-firestore" },
+    { name = "google-cloud-vision" },
 ]
 
 [package.dev-dependencies]
@@ -75,7 +76,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "google-cloud-firestore", specifier = ">=2.21.0" }]
+requires-dist = [
+    { name = "google-cloud-firestore", specifier = ">=2.21.0" },
+    { name = "google-cloud-vision", specifier = ">=3.10.2" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -146,6 +150,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/80/9d/027b9bf61a44422bcdcb00a2acc59152065b1cffa1fc89da62277730973e/google_cloud_firestore-2.21.0.tar.gz", hash = "sha256:0c37faa8506297f827eefc38feb155247a6dcb9a541289631015d125f1b003f8", size = 528159, upload-time = "2025-06-03T19:28:27.195Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0a/03/94755c64a2fb85cba734ac05a4f80096b8c0acfab0508c9d52c57f571687/google_cloud_firestore-2.21.0-py3-none-any.whl", hash = "sha256:bf33ccc38a27afc60748d1f9bb7c46b078d0d39d288636bdfd967611d7b3f17f", size = 368813, upload-time = "2025-06-03T19:28:25.131Z" },
+]
+
+[[package]]
+name = "google-cloud-vision"
+version = "3.10.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-api-core", extra = ["grpc"] },
+    { name = "google-auth" },
+    { name = "proto-plus" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/14/7e/6bf616c5bf22a0d7943082318a99f5cb09046605e4077dc5366a80326a12/google_cloud_vision-3.10.2.tar.gz", hash = "sha256:649380faab8933440b632bf88072c0c382a08d49ab02bc0b4fba821882ae1765", size = 570339, upload-time = "2025-06-12T01:09:59.24Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/39/aa/db9febba7b5bd9c9d772e935a5c495fb2b4ee05299e46c6c4b1e7c0b66b2/google_cloud_vision-3.10.2-py3-none-any.whl", hash = "sha256:42a17fbc2219b0a88e325e2c1df6664a8dafcbae66363fb37ebcb511b018fc87", size = 527877, upload-time = "2025-06-12T01:09:57.275Z" },
 ]
 
 [[package]]
