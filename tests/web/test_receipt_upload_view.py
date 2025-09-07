@@ -39,7 +39,7 @@ def test_should_display_ocr_results_for_confirmation():
         mock_ocr_service_class.return_value = mock_ocr_service
         mock_ocr_service.extract_text_from_image.return_value = "Test Store\n10,000원"
         mock_ocr_service.parse_store_name.return_value = "Test Store"
-        mock_ocr_service.parse_items_and_prices.return_value = [("Test Item", 10000)]
+        mock_ocr_service.parse_items_and_prices.return_value = [{"name": "Test Item", "price": 10000}]
         
         mock_parser = Mock()
         mock_parser_class.return_value = mock_parser

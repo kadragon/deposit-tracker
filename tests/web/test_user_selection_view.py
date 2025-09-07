@@ -8,7 +8,7 @@ def test_should_display_user_selection_page():
     with patch('src.web.app.UserRepository') as mock_user_repo_class:
         mock_user_repo = Mock()
         mock_user_repo_class.return_value = mock_user_repo
-        mock_user_repo.get_all.return_value = []
+        mock_user_repo.list_all.return_value = []
         
         client = app.test_client()
         response = client.get('/')
@@ -21,7 +21,7 @@ def test_should_list_all_available_users():
     with patch('src.web.app.UserRepository') as mock_user_repo_class:
         mock_user_repo = Mock()
         mock_user_repo_class.return_value = mock_user_repo
-        mock_user_repo.get_all.return_value = [
+        mock_user_repo.list_all.return_value = [
             Mock(name="홍길동", id="user1"),
             Mock(name="김철수", id="user2")
         ]
@@ -39,7 +39,7 @@ def test_should_redirect_to_dashboard_when_user_selected():
     with patch('src.web.app.UserRepository') as mock_user_repo_class:
         mock_user_repo = Mock()
         mock_user_repo_class.return_value = mock_user_repo
-        mock_user_repo.get_all.return_value = []
+        mock_user_repo.list_all.return_value = []
         
         client = app.test_client()
         response = client.post('/', data={'user_id': 'user123'})
