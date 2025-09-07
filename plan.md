@@ -97,19 +97,19 @@
 ### Phase 5: Web Interface - Basic Views
 
 #### Test 15: User Selection View
-- [ ] should_display_user_selection_page
-- [ ] should_list_all_available_users
-- [ ] should_redirect_to_dashboard_when_user_selected
+- [x] should_display_user_selection_page
+- [x] should_list_all_available_users
+- [x] should_redirect_to_dashboard_when_user_selected
 
 #### Test 16: User Dashboard View
-- [ ] should_display_user_deposit_balance
-- [ ] should_display_recent_transactions
-- [ ] should_display_coupon_progress
+- [x] should_display_user_deposit_balance
+- [x] should_display_recent_transactions
+- [x] should_display_coupon_progress
 
 #### Test 17: Receipt Upload View
-- [ ] should_display_receipt_upload_form
-- [ ] should_handle_image_upload
-- [ ] should_display_ocr_results_for_confirmation
+- [x] should_display_receipt_upload_form
+- [x] should_handle_image_upload
+- [x] should_display_ocr_results_for_confirmation
 
 ### Phase 6: Web Interface - Transaction Processing
 

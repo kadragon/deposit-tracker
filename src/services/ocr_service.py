@@ -31,6 +31,26 @@ class OCRService:
             # Be forgiving in the absence of credentials or on errors.
             return ""
 
+    def extract_text_from_image(self, content: bytes) -> str:
+        """Extract text from image bytes using Google Cloud Vision.
+
+        Returns a non-empty string when OCR succeeds, or an empty string on
+        failure. Safe to call without credentials in tests via mocking.
+        """
+        try:
+            from google.cloud import vision
+            from google.api_core import exceptions
+
+            client = vision.ImageAnnotatorClient()
+            image = vision.Image(content=content)
+            response = client.text_detection(image=image)
+            annotations = getattr(response, "text_annotations", [])
+            if annotations:
+                return annotations[0].description or ""
+            return ""
+        except exceptions.GoogleAPICallError:
+            return ""
+
     def parse_store_name(self, ocr_text: str) -> Optional[str]:
         lines = ocr_text.strip().split("\n")
         for raw in lines:
