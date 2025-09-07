@@ -9,7 +9,8 @@ class StoreRepository:
         self.firestore_client = firestore_client
     
     def save(self, store: Store):
-        _, doc_ref = self.firestore_client.collection(STORES_COLLECTION).add(store.to_dict())
+        # Firestore .add() returns (DocumentReference, WriteResult)
+        doc_ref, _ = self.firestore_client.collection(STORES_COLLECTION).add(store.to_dict())
         return doc_ref.id
     
     def get_by_id(self, store_id):

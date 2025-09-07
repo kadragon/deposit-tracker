@@ -8,7 +8,8 @@ def test_store_repository_save_adds_and_returns_id():
     mock_collection = mock_firestore.collection.return_value
     mock_added_ref = Mock()
     mock_added_ref.id = "new-store-id"
-    mock_collection.add.return_value = (Mock(), mock_added_ref)
+    # Firestore add returns (DocumentReference, WriteResult)
+    mock_collection.add.return_value = (mock_added_ref, Mock())
 
     repo = StoreRepository(mock_firestore)
     store = Store(name="편의점A")
@@ -28,4 +29,3 @@ def test_store_repository_find_by_name_returns_none_when_missing():
 
     result = repo.find_by_name("없는가게")
     assert result is None
-
