@@ -16,6 +16,15 @@ class ReceiptRepository:
             created_at=firestore.SERVER_TIMESTAMP,
         )
 
+        # Enrich for admin/dashboard queries that expect denormalized fields
+        try:
+            receipt_data["user_name"] = getattr(receipt.user, "name", None)
+            receipt_data["store_name"] = getattr(receipt.store, "name", None)
+            # Provide an alias for total used by some views
+            receipt_data["total_amount"] = receipt_data.get("total")
+        except Exception:
+            pass
+
         doc_ref, _ = self.db.collection("receipts").add(receipt_data)
         return doc_ref.id
     

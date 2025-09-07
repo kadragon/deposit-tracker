@@ -1,10 +1,12 @@
 from flask import Flask, request, redirect, url_for, abort, jsonify, session
 from decimal import Decimal
+import os
 from src.repositories.user_repository import UserRepository
 from src.repositories.receipt_repository import ReceiptRepository
 from src.repositories.coupon_repository import CouponRepository
 from src.services.ocr_service import OCRService
 from src.services.coupon_service import CouponService
+from markupsafe import escape
 
 
 def _get_value(source, key, default=''):
@@ -19,6 +21,15 @@ def _get_value(source, key, default=''):
 def _json_error(code: str, message: str, status: int):
     return jsonify({"error": {"code": code, "message": message}}), status
 
+def _first_value(source, keys: list[str], default=''):
+    """Gets the first available value among attributes/keys in order."""
+    for key in keys:
+        if hasattr(source, key):
+            return getattr(source, key)
+        if isinstance(source, dict) and key in source:
+            return source.get(key, default)
+    return default
+
 
 def create_app(
     user_repo=None,
@@ -29,7 +40,7 @@ def create_app(
     coupon_service: CouponService | None = None,
 ) -> Flask:
     app = Flask(__name__)
-    app.secret_key = 'test_secret_key'
+    app.secret_key = os.environ.get('APP_SECRET_KEY', 'test_secret_key')
     
     # Initialize dependencies with defaults if not provided
     if user_repo is None:
@@ -72,8 +83,8 @@ def create_app(
 
         result = f"{_get_value(user, 'name')}{_get_value(user, 'deposit')}"
         for receipt in receipts:
-            store_name = _get_value(receipt, 'store_name')
-            total_amount = _get_value(receipt, 'total_amount')
+            store_name = _first_value(receipt, ['store_name', 'store', 'store_id'])
+            total_amount = _first_value(receipt, ['total_amount', 'total'])
             result += f"{store_name}{total_amount}"
         for coupon in coupons:
             store_name = _get_value(coupon, 'store_name')
@@ -130,8 +141,7 @@ def create_app(
             # Sanitize store name to prevent XSS
             raw_store_name = _get_value(store, 'name')
             if raw_store_name:
-                # Basic HTML escaping for XSS prevention
-                store_name = str(raw_store_name).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#39;')
+                store_name = str(escape(raw_store_name))
             else:
                 store_name = ''
         
@@ -187,6 +197,8 @@ def create_app(
     
     @app.route('/admin')
     def admin():
+        if session.get('admin_logged_in'):
+            return redirect(url_for('admin_users'))
         return redirect(url_for('admin_login'))
     
     @app.route('/admin/login', methods=['GET', 'POST'])
@@ -194,10 +206,17 @@ def create_app(
         if request.method == 'POST':
             username = request.form.get('username')
             password = request.form.get('password')
-            if username == 'admin' and password == 'password':
+            expected_user = os.environ.get('ADMIN_USERNAME', 'admin')
+            expected_pass = os.environ.get('ADMIN_PASSWORD', 'password')
+            if username == expected_user and password == expected_pass:
                 session['admin_logged_in'] = True
                 return redirect(url_for('admin'))
         return 'admin-login'
+
+    @app.route('/admin/logout', methods=['POST'])
+    def admin_logout():
+        session.pop('admin_logged_in', None)
+        return redirect(url_for('admin_login'))
     
     @app.route('/admin/users', methods=['GET', 'POST'])
     def admin_users():
@@ -273,8 +292,17 @@ def create_app(
         
         store = store_repo.get_by_id(store_id)
         if store:
-            store.coupon_enabled = not store.coupon_enabled
-            store_repo.save(store)
+            new_value = not _get_value(store, 'coupon_enabled')
+            # Reflect change on in-memory object for callers/tests
+            try:
+                setattr(store, 'coupon_enabled', new_value)
+            except Exception:
+                pass
+            # Persist change
+            if hasattr(type(store_repo), 'update'):
+                store_repo.update(store_id, {"coupon_enabled": new_value})
+            else:
+                store_repo.save(store)
         return redirect(url_for('admin_stores'))
     
     @app.route('/admin/stores/<store_id>/set-goal', methods=['POST'])
@@ -285,8 +313,16 @@ def create_app(
         goal = int(request.form.get('goal'))
         store = store_repo.get_by_id(store_id)
         if store:
-            store.coupon_goal = goal
-            store_repo.save(store)
+            # Reflect change on in-memory object for callers/tests
+            try:
+                setattr(store, 'coupon_goal', goal)
+            except Exception:
+                pass
+            # Persist change
+            if hasattr(type(store_repo), 'update'):
+                store_repo.update(store_id, {"coupon_goal": goal})
+            else:
+                store_repo.save(store)
         return redirect(url_for('admin_stores'))
     
     @app.route('/admin/transactions')
@@ -315,7 +351,11 @@ def create_app(
         
         result = 'admin-transactions'
         for receipt in receipts:
-            result += f'{_get_value(receipt, "user_name")}{_get_value(receipt, "store_name")}{_get_value(receipt, "total_amount")}{_get_value(receipt, "date")}'
+            user_name = _first_value(receipt, ["user_name", "user", "user_id"])
+            store_n = _first_value(receipt, ["store_name", "store", "store_id"])
+            total = _first_value(receipt, ["total_amount", "total"])
+            date_val = _first_value(receipt, ["date", "created_at"])
+            result += f'{user_name}{store_n}{total}{date_val}'
         return result
 
     return app
