@@ -110,7 +110,7 @@ def create_app(
             # Compute total from parsed items (fallback to 0)
             try:
                 total_amount = sum(int(i.get('price', 0)) for i in items)
-            except Exception:
+            except (ValueError, TypeError):
                 total_amount = 0
 
             # Redirect to confirmation with canonical identifiers
@@ -122,12 +122,17 @@ def create_app(
     def confirm_receipt():
         store_id = request.args.get('store_id', '')
         total = request.args.get('total', '')
-        items = request.args.get('items', '')
         
         store_name = ''
         if store_repo and store_id:
             store = store_repo.get_by_id(store_id)
-            store_name = str(_get_value(store, 'name'))
+            # Sanitize store name to prevent XSS
+            raw_store_name = _get_value(store, 'name')
+            if raw_store_name:
+                # Basic HTML escaping for XSS prevention
+                store_name = str(raw_store_name).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#39;')
+            else:
+                store_name = ''
         
         users = user_repo.list_all()
         
@@ -148,29 +153,25 @@ def create_app(
         
         # Validate required fields
         if not user_id or not store_id or not total:
-            return 'Missing required fields', 400
+            return _json_error('missing_fields', 'Missing required fields', 400)
         
         # Normalize total as Decimal for consistency
         try:
             total_amount = Decimal(str(total))
             if total_amount <= 0:
-                return 'Invalid total amount', 400
-        except Exception:
-            return 'Invalid total amount', 400
+                return _json_error('invalid_total', 'Invalid total amount', 400)
+        except (ValueError, TypeError, Exception):
+            return _json_error('invalid_total', 'Invalid total amount', 400)
         
         # Process transaction if using deposit
         if use_deposit == 'yes':
             user = user_repo.get_by_id(user_id)
             if not user:
-                return 'User not found', 404
+                return _json_error('user_not_found', 'User not found', 404)
             # Ensure sufficient deposit; handle insufficiency gracefully
-            try:
-                # Guard before subtract to avoid exceptions where possible
-                if getattr(user, 'deposit', Decimal('0')) < total_amount:
-                    return 'Insufficient deposit', 400
-                user.subtract_deposit(total_amount)
-            except Exception:
-                return 'Insufficient deposit', 400
+            if getattr(user, 'deposit', Decimal('0')) < total_amount:
+                return _json_error('insufficient_deposit', 'Insufficient deposit', 400)
+            user.subtract_deposit(total_amount)
             user_repo.save(user)
         
         # Award coupon for this purchase

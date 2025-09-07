@@ -1,7 +1,7 @@
 import pytest
 from flask import Flask
 from src.web.app import create_app
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 
 def test_should_display_parsed_receipt_for_confirmation():
