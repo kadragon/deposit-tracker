@@ -2,7 +2,9 @@ from flask import Flask, request, redirect, url_for, abort
 from src.repositories.user_repository import UserRepository
 from src.repositories.receipt_repository import ReceiptRepository
 from src.repositories.coupon_repository import CouponRepository
+from src.repositories.store_repository import StoreRepository
 from src.services.ocr_service import OCRService
+from src.services.coupon_service import CouponService
 
 
 def _get_value(source, key, default=''):
@@ -87,6 +89,48 @@ def create_app(user_repo=None, receipt_repo=None, coupon_repo=None, ocr_service=
             return result
 
         return 'upload-form'
+
+    @app.route('/confirm-receipt')
+    def confirm_receipt():
+        store_name = request.args.get('store_name', '')
+        total = request.args.get('total', '')
+        items = request.args.get('items', '')
+        
+        users = user_repo.list_all()
+        
+        result = f'receipt-confirmation{store_name}{total}user-selection'
+        for user in users:
+            result += str(_get_value(user, 'name'))
+        
+        result += 'deposit-choice'
+        
+        return result
+
+    @app.route('/process-receipt', methods=['POST'])
+    def process_receipt():
+        user_id = request.form.get('user_id')
+        store_name = request.form.get('store_name')
+        total = request.form.get('total')
+        use_deposit = request.form.get('use_deposit')
+        
+        # Process transaction if using deposit
+        if use_deposit == 'yes' and user_id and total:
+            user = user_repo.get_by_id(user_id)
+            if user:
+                user.subtract_deposit(int(total))
+                user_repo.save(user)
+        
+        # Award coupon for this purchase
+        if user_id and store_name:
+            store_repo = StoreRepository()
+            coupon_service = CouponService(coupon_repo, store_repo)
+            coupon_service.award_coupon(user_id, store_name)
+        
+        return redirect(url_for('success'))
+
+    @app.route('/success')
+    def success():
+        return 'transaction-success'
 
     return app
 
