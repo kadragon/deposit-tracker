@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, url_for, abort, jsonify
+from flask import Flask, request, redirect, url_for, abort, jsonify, session
 from decimal import Decimal
 from src.repositories.user_repository import UserRepository
 from src.repositories.receipt_repository import ReceiptRepository
@@ -29,6 +29,7 @@ def create_app(
     coupon_service: CouponService | None = None,
 ) -> Flask:
     app = Flask(__name__)
+    app.secret_key = 'test_secret_key'
     
     # Initialize dependencies with defaults if not provided
     if user_repo is None:
@@ -183,5 +184,138 @@ def create_app(
     @app.route('/success')
     def success():
         return 'transaction-success'
+    
+    @app.route('/admin')
+    def admin():
+        return redirect(url_for('admin_login'))
+    
+    @app.route('/admin/login', methods=['GET', 'POST'])
+    def admin_login():
+        if request.method == 'POST':
+            username = request.form.get('username')
+            password = request.form.get('password')
+            if username == 'admin' and password == 'password':
+                session['admin_logged_in'] = True
+                return redirect(url_for('admin'))
+        return 'admin-login'
+    
+    @app.route('/admin/users', methods=['GET', 'POST'])
+    def admin_users():
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        if request.method == 'POST':
+            # Create new user
+            from src.models.user import User
+            name = request.form.get('name')
+            deposit = request.form.get('deposit', '0')
+            user = User(name=name, deposit=Decimal(deposit))
+            user_repo.save(user)
+            return redirect(url_for('admin_users'))
+        
+        # Display all users
+        users = user_repo.list_all()
+        result = 'admin-users'
+        for user in users:
+            result += f'{_get_value(user, "name")}{_get_value(user, "deposit")}'
+        return result
+    
+    @app.route('/admin/users/<user_id>/add-deposit', methods=['POST'])
+    def admin_add_deposit(user_id):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        amount = request.form.get('amount')
+        user = user_repo.get_by_id(user_id)
+        if user:
+            user.add_deposit(Decimal(amount))
+            user_repo.save(user)
+        return redirect(url_for('admin_users'))
+    
+    @app.route('/admin/users/<user_id>/delete', methods=['POST'])
+    def admin_delete_user(user_id):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        user_repo.delete(user_id)
+        return redirect(url_for('admin_users'))
+    
+    @app.route('/admin/stores', methods=['GET', 'POST'])
+    def admin_stores():
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        if request.method == 'POST':
+            # Create new store
+            from src.models.store import Store
+            name = request.form.get('name')
+            coupon_enabled = request.form.get('coupon_enabled') == 'on'
+            coupon_goal = int(request.form.get('coupon_goal', '10'))
+            store = Store(name=name)
+            store.enable_coupon_system()
+            store.set_coupon_goal(coupon_goal)
+            if not coupon_enabled:
+                store.coupon_enabled = False
+            store_repo.save(store)
+            return redirect(url_for('admin_stores'))
+        
+        # Display all stores
+        stores = store_repo.list_all()
+        result = 'admin-stores'
+        for store in stores:
+            result += f'{_get_value(store, "name")}{_get_value(store, "coupon_enabled")}{_get_value(store, "coupon_goal")}'
+        return result
+    
+    @app.route('/admin/stores/<store_id>/toggle-coupon', methods=['POST'])
+    def admin_toggle_coupon(store_id):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        store = store_repo.get_by_id(store_id)
+        if store:
+            store.coupon_enabled = not store.coupon_enabled
+            store_repo.save(store)
+        return redirect(url_for('admin_stores'))
+    
+    @app.route('/admin/stores/<store_id>/set-goal', methods=['POST'])
+    def admin_set_goal(store_id):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        goal = int(request.form.get('goal'))
+        store = store_repo.get_by_id(store_id)
+        if store:
+            store.coupon_goal = goal
+            store_repo.save(store)
+        return redirect(url_for('admin_stores'))
+    
+    @app.route('/admin/transactions')
+    def admin_transactions():
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        user_id = request.args.get('user_id')
+        store_name = request.args.get('store_name')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        receipts = []
+        
+        if user_id:
+            receipts = receipt_repo.find_by_user_id(user_id)
+        elif store_name:
+            receipts = receipt_repo.find_by_store_name(store_name)
+        elif start_date and end_date:
+            from datetime import datetime
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            receipts = receipt_repo.find_by_date_range(start_dt, end_dt)
+        else:
+            receipts = receipt_repo.list_all()
+        
+        result = 'admin-transactions'
+        for receipt in receipts:
+            result += f'{_get_value(receipt, "user_name")}{_get_value(receipt, "store_name")}{_get_value(receipt, "total_amount")}{_get_value(receipt, "date")}'
+        return result
 
     return app

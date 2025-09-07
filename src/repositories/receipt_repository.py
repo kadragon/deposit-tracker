@@ -39,3 +39,21 @@ class ReceiptRepository:
             receipt_data["id"] = doc.id
             receipts.append(receipt_data)
         return receipts
+    
+    def list_all(self) -> List[dict]:
+        docs = self.db.collection("receipts").get()
+        receipts = []
+        for doc in docs:
+            receipt_data = doc.to_dict()
+            receipt_data["id"] = doc.id
+            receipts.append(receipt_data)
+        return receipts
+    
+    def find_by_store_name(self, store_name: str) -> List[dict]:
+        docs = self.db.collection("receipts").where("store_name", "==", store_name).get()
+        receipts = []
+        for doc in docs:
+            receipt_data = doc.to_dict()
+            receipt_data["id"] = doc.id
+            receipts.append(receipt_data)
+        return receipts

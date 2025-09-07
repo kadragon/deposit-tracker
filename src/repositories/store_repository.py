@@ -30,3 +30,10 @@ class StoreRepository:
         for doc in docs:
             return Store.from_dict(doc.to_dict())
         return None
+    
+    def list_all(self):
+        docs = self.firestore_client.collection(STORES_COLLECTION).stream()
+        stores = []
+        for doc in docs:
+            stores.append(Store.from_dict(doc.to_dict()))
+        return stores
