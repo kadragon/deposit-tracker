@@ -14,7 +14,8 @@ class StoreRepository:
         # Set generated id on the domain object for downstream use
         try:
             store.id = doc_ref.id
-        except Exception:
+        except AttributeError:
+            # Store object doesn't allow setting id attribute
             pass
         return doc_ref.id
     

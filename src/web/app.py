@@ -1,11 +1,14 @@
 from flask import Flask, request, redirect, url_for, abort, jsonify, session
 from decimal import Decimal
 import os
+from datetime import datetime
 from src.repositories.user_repository import UserRepository
 from src.repositories.receipt_repository import ReceiptRepository
 from src.repositories.coupon_repository import CouponRepository
 from src.services.ocr_service import OCRService
 from src.services.coupon_service import CouponService
+from src.models.user import User
+from src.models.store import Store
 from markupsafe import escape
 
 
@@ -23,11 +26,25 @@ def _json_error(code: str, message: str, status: int):
 
 def _first_value(source, keys: list[str], default=''):
     """Gets the first available value among attributes/keys in order."""
+    if not source:
+        return default
+    
     for key in keys:
-        if hasattr(source, key):
-            return getattr(source, key)
-        if isinstance(source, dict) and key in source:
-            return source.get(key, default)
+        try:
+            if hasattr(source, key):
+                value = getattr(source, key)
+                if value is not None:
+                    return value
+        except (AttributeError, TypeError):
+            pass
+            
+        try:
+            if isinstance(source, dict) and key in source:
+                value = source.get(key)
+                if value is not None:
+                    return value
+        except (TypeError, AttributeError):
+            pass
     return default
 
 
@@ -206,8 +223,16 @@ def create_app(
         if request.method == 'POST':
             username = request.form.get('username')
             password = request.form.get('password')
-            expected_user = os.environ.get('ADMIN_USERNAME', 'admin')
-            expected_pass = os.environ.get('ADMIN_PASSWORD', 'password')
+            expected_user = os.environ.get('ADMIN_USERNAME')
+            expected_pass = os.environ.get('ADMIN_PASSWORD')
+            
+            # Use default credentials only in test/development environments
+            if not expected_user or not expected_pass:
+                env = os.environ.get('FLASK_ENV', 'development')
+                if env == 'production':
+                    return 'Configuration error: Admin credentials not set', 500
+                expected_user = expected_user or 'admin'
+                expected_pass = expected_pass or 'password'
             if username == expected_user and password == expected_pass:
                 session['admin_logged_in'] = True
                 return redirect(url_for('admin'))
@@ -225,7 +250,6 @@ def create_app(
         
         if request.method == 'POST':
             # Create new user
-            from src.models.user import User
             name = request.form.get('name')
             deposit = request.form.get('deposit', '0')
             user = User(name=name, deposit=Decimal(deposit))
@@ -266,15 +290,17 @@ def create_app(
         
         if request.method == 'POST':
             # Create new store
-            from src.models.store import Store
             name = request.form.get('name')
             coupon_enabled = request.form.get('coupon_enabled') == 'on'
-            coupon_goal = int(request.form.get('coupon_goal', '10'))
+            try:
+                coupon_goal = int(request.form.get('coupon_goal', '10'))
+            except (ValueError, TypeError):
+                coupon_goal = 10
+            
             store = Store(name=name)
-            store.enable_coupon_system()
-            store.set_coupon_goal(coupon_goal)
-            if not coupon_enabled:
-                store.coupon_enabled = False
+            store.coupon_enabled = coupon_enabled
+            if coupon_enabled:
+                store.set_coupon_goal(coupon_goal)
             store_repo.save(store)
             return redirect(url_for('admin_stores'))
         
@@ -296,7 +322,8 @@ def create_app(
             # Reflect change on in-memory object for callers/tests
             try:
                 setattr(store, 'coupon_enabled', new_value)
-            except Exception:
+            except AttributeError:
+                # Store object doesn't allow setting coupon_enabled attribute
                 pass
             # Persist change
             if hasattr(type(store_repo), 'update'):
@@ -310,13 +337,17 @@ def create_app(
         if not session.get('admin_logged_in'):
             return redirect(url_for('admin_login'))
         
-        goal = int(request.form.get('goal'))
+        try:
+            goal = int(request.form.get('goal'))
+        except (ValueError, TypeError):
+            return redirect(url_for('admin_stores'))
         store = store_repo.get_by_id(store_id)
         if store:
             # Reflect change on in-memory object for callers/tests
             try:
                 setattr(store, 'coupon_goal', goal)
-            except Exception:
+            except AttributeError:
+                # Store object doesn't allow setting coupon_goal attribute
                 pass
             # Persist change
             if hasattr(type(store_repo), 'update'):
@@ -342,7 +373,6 @@ def create_app(
         elif store_name:
             receipts = receipt_repo.find_by_store_name(store_name)
         elif start_date and end_date:
-            from datetime import datetime
             start_dt = datetime.strptime(start_date, '%Y-%m-%d')
             end_dt = datetime.strptime(end_date, '%Y-%m-%d')
             receipts = receipt_repo.find_by_date_range(start_dt, end_dt)
