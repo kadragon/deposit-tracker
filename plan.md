@@ -114,15 +114,15 @@
 ### Phase 6: Web Interface - Transaction Processing
 
 #### Test 18: Receipt Confirmation Flow
-- [ ] should_display_parsed_receipt_for_confirmation
-- [ ] should_allow_user_to_select_target_user
-- [ ] should_allow_user_to_choose_deposit_usage
-- [ ] should_process_confirmed_receipt
+- [x] should_display_parsed_receipt_for_confirmation
+- [x] should_allow_user_to_select_target_user
+- [x] should_allow_user_to_choose_deposit_usage
+- [x] should_process_confirmed_receipt
 
 #### Test 19: Transaction Success Flow
-- [ ] should_update_user_deposit_after_transaction
-- [ ] should_award_coupon_after_transaction
-- [ ] should_redirect_to_success_page
+- [x] should_update_user_deposit_after_transaction
+- [x] should_award_coupon_after_transaction
+- [x] should_redirect_to_success_page
 
 ### Phase 7: Admin Interface
 
