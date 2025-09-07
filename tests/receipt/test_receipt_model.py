@@ -23,12 +23,12 @@ def test_should_add_items_to_receipt():
     receipt.add_item("바나나", 3000, 1)
     
     assert len(receipt.items) == 2
-    assert receipt.items[0]["name"] == "사과"
-    assert receipt.items[0]["price"] == 2000
-    assert receipt.items[0]["quantity"] == 2
-    assert receipt.items[1]["name"] == "바나나"
-    assert receipt.items[1]["price"] == 3000
-    assert receipt.items[1]["quantity"] == 1
+    assert receipt.items[0].name == "사과"
+    assert receipt.items[0].price == 2000
+    assert receipt.items[0].quantity == 2
+    assert receipt.items[1].name == "바나나"
+    assert receipt.items[1].price == 3000
+    assert receipt.items[1].quantity == 1
 
 
 def test_should_calculate_total_amount():

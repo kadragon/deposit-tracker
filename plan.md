@@ -84,15 +84,15 @@
 ### Phase 4: OCR Integration & Receipt Processing
 
 #### Test 13: OCR Service
-- [ ] should_extract_text_from_receipt_image
-- [ ] should_parse_store_name_from_ocr_text
-- [ ] should_parse_items_and_prices_from_ocr_text
-- [ ] should_parse_date_from_ocr_text
+- [x] should_extract_text_from_receipt_image
+- [x] should_parse_store_name_from_ocr_text
+- [x] should_parse_items_and_prices_from_ocr_text
+- [x] should_parse_date_from_ocr_text
 
 #### Test 14: Receipt Parser
-- [ ] should_create_receipt_from_ocr_result
-- [ ] should_handle_missing_store_in_ocr
-- [ ] should_handle_invalid_price_format
+- [x] should_create_receipt_from_ocr_result
+- [x] should_handle_missing_store_in_ocr
+- [x] should_handle_invalid_price_format
 
 ### Phase 5: Web Interface - Basic Views
 
