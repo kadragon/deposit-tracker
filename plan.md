@@ -127,27 +127,27 @@
 ### Phase 7: Admin Interface
 
 #### Test 20: Admin Authentication
-- [ ] should_require_admin_login
-- [ ] should_validate_admin_credentials
-- [ ] should_restrict_access_to_admin_pages
+- [x] should_require_admin_login
+- [x] should_validate_admin_credentials
+- [x] should_restrict_access_to_admin_pages
 
 #### Test 21: Admin User Management
-- [ ] should_display_all_users_in_admin
-- [ ] should_allow_admin_to_create_user
-- [ ] should_allow_admin_to_add_deposit
-- [ ] should_allow_admin_to_delete_user
+- [x] should_display_all_users_in_admin
+- [x] should_allow_admin_to_create_user
+- [x] should_allow_admin_to_add_deposit
+- [x] should_allow_admin_to_delete_user
 
 #### Test 22: Admin Store Management
-- [ ] should_display_all_stores_in_admin
-- [ ] should_allow_admin_to_create_store
-- [ ] should_allow_admin_to_toggle_coupon_system
-- [ ] should_allow_admin_to_set_coupon_goal
+- [x] should_display_all_stores_in_admin
+- [x] should_allow_admin_to_create_store
+- [x] should_allow_admin_to_toggle_coupon_system
+- [x] should_allow_admin_to_set_coupon_goal
 
 #### Test 23: Admin Transaction History
-- [ ] should_display_all_transactions
-- [ ] should_filter_transactions_by_user
-- [ ] should_filter_transactions_by_date
-- [ ] should_filter_transactions_by_store
+- [x] should_display_all_transactions
+- [x] should_filter_transactions_by_user
+- [x] should_filter_transactions_by_date
+- [x] should_filter_transactions_by_store
 
 ### Phase 8: Charts & Visualization
 

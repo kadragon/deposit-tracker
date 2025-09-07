@@ -1,10 +1,15 @@
-from flask import Flask, request, redirect, url_for, abort, jsonify
+from flask import Flask, request, redirect, url_for, abort, jsonify, session
 from decimal import Decimal
+import os
+from datetime import datetime
 from src.repositories.user_repository import UserRepository
 from src.repositories.receipt_repository import ReceiptRepository
 from src.repositories.coupon_repository import CouponRepository
 from src.services.ocr_service import OCRService
 from src.services.coupon_service import CouponService
+from src.models.user import User
+from src.models.store import Store
+from markupsafe import escape
 
 
 def _get_value(source, key, default=''):
@@ -19,6 +24,29 @@ def _get_value(source, key, default=''):
 def _json_error(code: str, message: str, status: int):
     return jsonify({"error": {"code": code, "message": message}}), status
 
+def _first_value(source, keys: list[str], default=''):
+    """Gets the first available value among attributes/keys in order."""
+    if not source:
+        return default
+    
+    for key in keys:
+        try:
+            if hasattr(source, key):
+                value = getattr(source, key)
+                if value is not None:
+                    return value
+        except (AttributeError, TypeError):
+            pass
+            
+        try:
+            if isinstance(source, dict) and key in source:
+                value = source.get(key)
+                if value is not None:
+                    return value
+        except (TypeError, AttributeError):
+            pass
+    return default
+
 
 def create_app(
     user_repo=None,
@@ -29,6 +57,7 @@ def create_app(
     coupon_service: CouponService | None = None,
 ) -> Flask:
     app = Flask(__name__)
+    app.secret_key = os.environ.get('APP_SECRET_KEY', 'test_secret_key')
     
     # Initialize dependencies with defaults if not provided
     if user_repo is None:
@@ -71,8 +100,8 @@ def create_app(
 
         result = f"{_get_value(user, 'name')}{_get_value(user, 'deposit')}"
         for receipt in receipts:
-            store_name = _get_value(receipt, 'store_name')
-            total_amount = _get_value(receipt, 'total_amount')
+            store_name = _first_value(receipt, ['store_name', 'store', 'store_id'])
+            total_amount = _first_value(receipt, ['total_amount', 'total'])
             result += f"{store_name}{total_amount}"
         for coupon in coupons:
             store_name = _get_value(coupon, 'store_name')
@@ -129,8 +158,7 @@ def create_app(
             # Sanitize store name to prevent XSS
             raw_store_name = _get_value(store, 'name')
             if raw_store_name:
-                # Basic HTML escaping for XSS prevention
-                store_name = str(raw_store_name).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#39;')
+                store_name = str(escape(raw_store_name))
             else:
                 store_name = ''
         
@@ -183,5 +211,181 @@ def create_app(
     @app.route('/success')
     def success():
         return 'transaction-success'
+    
+    @app.route('/admin')
+    def admin():
+        if session.get('admin_logged_in'):
+            return redirect(url_for('admin_users'))
+        return redirect(url_for('admin_login'))
+    
+    @app.route('/admin/login', methods=['GET', 'POST'])
+    def admin_login():
+        if request.method == 'POST':
+            username = request.form.get('username')
+            password = request.form.get('password')
+            expected_user = os.environ.get('ADMIN_USERNAME')
+            expected_pass = os.environ.get('ADMIN_PASSWORD')
+            
+            # Use default credentials only in test/development environments
+            if not expected_user or not expected_pass:
+                env = os.environ.get('FLASK_ENV', 'development')
+                if env == 'production':
+                    return 'Configuration error: Admin credentials not set', 500
+                expected_user = expected_user or 'admin'
+                expected_pass = expected_pass or 'password'
+            if username == expected_user and password == expected_pass:
+                session['admin_logged_in'] = True
+                return redirect(url_for('admin'))
+        return 'admin-login'
+
+    @app.route('/admin/logout', methods=['POST'])
+    def admin_logout():
+        session.pop('admin_logged_in', None)
+        return redirect(url_for('admin_login'))
+    
+    @app.route('/admin/users', methods=['GET', 'POST'])
+    def admin_users():
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        if request.method == 'POST':
+            # Create new user
+            name = request.form.get('name')
+            deposit = request.form.get('deposit', '0')
+            user = User(name=name, deposit=Decimal(deposit))
+            user_repo.save(user)
+            return redirect(url_for('admin_users'))
+        
+        # Display all users
+        users = user_repo.list_all()
+        result = 'admin-users'
+        for user in users:
+            result += f'{_get_value(user, "name")}{_get_value(user, "deposit")}'
+        return result
+    
+    @app.route('/admin/users/<user_id>/add-deposit', methods=['POST'])
+    def admin_add_deposit(user_id):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        amount = request.form.get('amount')
+        user = user_repo.get_by_id(user_id)
+        if user:
+            user.add_deposit(Decimal(amount))
+            user_repo.save(user)
+        return redirect(url_for('admin_users'))
+    
+    @app.route('/admin/users/<user_id>/delete', methods=['POST'])
+    def admin_delete_user(user_id):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        user_repo.delete(user_id)
+        return redirect(url_for('admin_users'))
+    
+    @app.route('/admin/stores', methods=['GET', 'POST'])
+    def admin_stores():
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        if request.method == 'POST':
+            # Create new store
+            name = request.form.get('name')
+            coupon_enabled = request.form.get('coupon_enabled') == 'on'
+            try:
+                coupon_goal = int(request.form.get('coupon_goal', '10'))
+            except (ValueError, TypeError):
+                coupon_goal = 10
+            
+            store = Store(name=name)
+            store.coupon_enabled = coupon_enabled
+            if coupon_enabled:
+                store.set_coupon_goal(coupon_goal)
+            store_repo.save(store)
+            return redirect(url_for('admin_stores'))
+        
+        # Display all stores
+        stores = store_repo.list_all()
+        result = 'admin-stores'
+        for store in stores:
+            result += f'{_get_value(store, "name")}{_get_value(store, "coupon_enabled")}{_get_value(store, "coupon_goal")}'
+        return result
+    
+    @app.route('/admin/stores/<store_id>/toggle-coupon', methods=['POST'])
+    def admin_toggle_coupon(store_id):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        store = store_repo.get_by_id(store_id)
+        if store:
+            new_value = not _get_value(store, 'coupon_enabled')
+            # Reflect change on in-memory object for callers/tests
+            try:
+                setattr(store, 'coupon_enabled', new_value)
+            except AttributeError:
+                # Store object doesn't allow setting coupon_enabled attribute
+                pass
+            # Persist change
+            if hasattr(type(store_repo), 'update'):
+                store_repo.update(store_id, {"coupon_enabled": new_value})
+            else:
+                store_repo.save(store)
+        return redirect(url_for('admin_stores'))
+    
+    @app.route('/admin/stores/<store_id>/set-goal', methods=['POST'])
+    def admin_set_goal(store_id):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        try:
+            goal = int(request.form.get('goal'))
+        except (ValueError, TypeError):
+            return redirect(url_for('admin_stores'))
+        store = store_repo.get_by_id(store_id)
+        if store:
+            # Reflect change on in-memory object for callers/tests
+            try:
+                setattr(store, 'coupon_goal', goal)
+            except AttributeError:
+                # Store object doesn't allow setting coupon_goal attribute
+                pass
+            # Persist change
+            if hasattr(type(store_repo), 'update'):
+                store_repo.update(store_id, {"coupon_goal": goal})
+            else:
+                store_repo.save(store)
+        return redirect(url_for('admin_stores'))
+    
+    @app.route('/admin/transactions')
+    def admin_transactions():
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        user_id = request.args.get('user_id')
+        store_name = request.args.get('store_name')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        receipts = []
+        
+        if user_id:
+            receipts = receipt_repo.find_by_user_id(user_id)
+        elif store_name:
+            receipts = receipt_repo.find_by_store_name(store_name)
+        elif start_date and end_date:
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            receipts = receipt_repo.find_by_date_range(start_dt, end_dt)
+        else:
+            receipts = receipt_repo.list_all()
+        
+        result = 'admin-transactions'
+        for receipt in receipts:
+            user_name = _first_value(receipt, ["user_name", "user", "user_id"])
+            store_n = _first_value(receipt, ["store_name", "store", "store_id"])
+            total = _first_value(receipt, ["total_amount", "total"])
+            date_val = _first_value(receipt, ["date", "created_at"])
+            result += f'{user_name}{store_n}{total}{date_val}'
+        return result
 
     return app

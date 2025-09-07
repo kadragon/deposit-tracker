@@ -28,3 +28,8 @@ class UserRepository:
     def list_all(self):
         docs = self.firestore_client.collection(USERS_COLLECTION).stream()
         return [User.from_dict(doc.to_dict()) for doc in docs]
+    
+    def delete(self, user_id: str):
+        """Delete a user by their document ID."""
+        doc_ref = self.firestore_client.collection(USERS_COLLECTION).document(user_id)
+        doc_ref.delete()
