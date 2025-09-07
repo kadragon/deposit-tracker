@@ -66,3 +66,21 @@ def test_should_reset_coupon_when_goal_reached():
     # Assert
     mock_store_repo.get_by_id.assert_called_once_with("store456")
     mock_coupon_repo.increment.assert_called_once_with("user123", "store456", 10)
+
+
+def test_should_not_award_coupon_if_store_not_found():
+    # Arrange
+    mock_coupon_repo = Mock()
+    mock_store_repo = Mock()
+    
+    # Store not found - returns None
+    mock_store_repo.get_by_id.return_value = None
+    
+    service = CouponService(mock_coupon_repo, mock_store_repo)
+    
+    # Act
+    service.award_coupon_for_purchase("user123", "store456")
+    
+    # Assert
+    mock_store_repo.get_by_id.assert_called_once_with("store456")
+    mock_coupon_repo.increment.assert_not_called()

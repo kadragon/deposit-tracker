@@ -97,6 +97,11 @@ def test_update_count_creates_when_missing():
     mock_collection = mock_firestore.collection.return_value
     # No existing matching document
     mock_collection.where.return_value.where.return_value.limit.return_value.stream.return_value = []
+    
+    # Mock the add method to return a tuple (DocumentReference, WriteResult)
+    mock_doc_ref = Mock()
+    mock_doc_ref.id = "new_doc_id"
+    mock_collection.add.return_value = (mock_doc_ref, Mock())
 
     repo = CouponRepository(mock_firestore)
 
