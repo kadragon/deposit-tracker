@@ -3,6 +3,10 @@ from typing import List, Dict, Optional
 
 
 class OCRService:
+    # Pre-compile regex patterns for better performance
+    ITEMS_PATTERN = re.compile(r"^\s*(.+?)\s+([0-9][0-9,\s]*)\s*원\s*$")
+    DATE_PATTERN = re.compile(r"일시:\s*([0-9]{4}-[0-9]{2}-[0-9]{2}\s+[0-9]{2}:[0-9]{2}:[0-9]{2})")
+
     def extract_text(self, image_path: str) -> str:
         """Extract text from a receipt image using Google Cloud Vision.
 
@@ -11,6 +15,7 @@ class OCRService:
         """
         try:
             from google.cloud import vision
+            from google.api_core import exceptions
 
             client = vision.ImageAnnotatorClient()
             with open(image_path, "rb") as f:
@@ -22,7 +27,7 @@ class OCRService:
             if annotations:
                 return annotations[0].description or ""
             return ""
-        except Exception:
+        except (FileNotFoundError, exceptions.GoogleAPICallError):
             # Be forgiving in the absence of credentials or on errors.
             return ""
 
@@ -49,9 +54,6 @@ class OCRService:
         items: List[Dict[str, int]] = []
         lines = ocr_text.strip().split("\n")
 
-        # Allow optional spaces in numbers and support currency symbol variations.
-        pattern = re.compile(r"^\s*(.+?)\s+([0-9][0-9,\s]*)\s*원\s*$")
-
         for raw in lines:
             line = raw.strip()
             if not line or "총계" in line or line.upper().startswith("TEL"):
@@ -59,7 +61,7 @@ class OCRService:
             if "원" not in line:
                 continue
 
-            match = pattern.match(line)
+            match = self.ITEMS_PATTERN.match(line)
             if match:
                 name = match.group(1).strip()
                 # Remove commas and spaces inside the number
@@ -78,7 +80,7 @@ class OCRService:
         for raw in lines:
             line = raw.strip()
             if "일시:" in line:
-                date_match = re.search(r"일시:\s*([0-9]{4}-[0-9]{2}-[0-9]{2}\s+[0-9]{2}:[0-9]{2}:[0-9]{2})", line)
+                date_match = self.DATE_PATTERN.search(line)
                 if date_match:
                     return date_match.group(1).strip()
 

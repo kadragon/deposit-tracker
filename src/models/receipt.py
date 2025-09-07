@@ -1,4 +1,4 @@
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 from decimal import Decimal
 from src.models.receipt_item import ReceiptItem
 
@@ -6,10 +6,11 @@ from src.models.receipt_item import ReceiptItem
 class Receipt:
     """Represents a purchase receipt composed of items for a user at a store."""
 
-    def __init__(self, user: Any, store: Any):
+    def __init__(self, user: Any, store: Any, purchase_date: Optional[str] = None):
         self.user = user
         self.store = store
         self.items: List[ReceiptItem] = []
+        self.purchase_date = purchase_date
 
     def add_item(self, name: str, price: Any, quantity: int) -> None:
         """Add an item by creating a ReceiptItem."""
@@ -38,6 +39,7 @@ class Receipt:
                 for i in self.items
             ],
             "total": int(self.calculate_total()),
+            "purchase_date": self.purchase_date,
         }
 
     def to_firestore_dict(
@@ -63,6 +65,7 @@ class Receipt:
                 for i in self.items
             ],
             "total": str(self.calculate_total()),
+            "purchase_date": self.purchase_date,
         }
         if created_at is not None:
             data["created_at"] = created_at
