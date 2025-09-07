@@ -1,5 +1,4 @@
 from typing import Any, List, Optional
-from decimal import Decimal
 from datetime import datetime
 from google.cloud import firestore
 
@@ -10,22 +9,12 @@ class ReceiptRepository:
         self.db = client or firestore.Client()
     
     def save(self, receipt: Any) -> str:
-        def _serialize_item(item: Any) -> dict:
-            # Now we only handle ReceiptItem objects
-            return {
-                "name": item.name,
-                "price": str(item.price),
-                "quantity": item.quantity,
-            }
-
-        receipt_data = {
-            "user_id": getattr(receipt.user, "id", None),
-            "store_id": getattr(receipt.store, "id", None),
-            "items": [_serialize_item(item) for item in receipt.items],
-            "total": str(receipt.calculate_total()),
-            # Prefer server timestamp for consistency across environments
-            "created_at": firestore.SERVER_TIMESTAMP,
-        }
+        # Use model-provided serializer for Firestore mapping
+        receipt_data = receipt.to_firestore_dict(
+            user_id=getattr(receipt.user, "id", None),
+            store_id=getattr(receipt.store, "id", None),
+            created_at=firestore.SERVER_TIMESTAMP,
+        )
 
         doc_ref, _ = self.db.collection("receipts").add(receipt_data)
         return doc_ref.id
