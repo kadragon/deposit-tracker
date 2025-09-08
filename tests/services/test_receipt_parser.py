@@ -188,3 +188,74 @@ def test_should_create_receipt_items_ready_for_assignment():
     # Test per-user amount calculation
     user_amounts = americano.calculate_per_user_amounts()
     assert user_amounts[user] == 4500
+
+
+def test_should_parse_items_with_llm_for_korean_receipt():
+    # Given
+    ocr_service_mock = Mock(spec=OCRService)
+    receipt_parser = ReceiptParser(ocr_service_mock)
+    
+    user = User(name="홍길동", deposit=50000)
+    
+    # Korean receipt OCR text with various formatting
+    korean_ocr_text = """
+    스타벅스 코엑스점
+    서울특별시 강남구 영동대로 513
+    TEL: 02-6002-8000
+    
+    2024/09/08(일) 12:34:56
+    영수증 번호: 1234-5678
+    
+    * 주문 내역 *
+    아이스 아메리카노 (Tall)    4,500원
+    카페라떼 (Grande)          5,800원
+    초콜릿 케이크               6,200원
+    쿠키                       3,000원
+    
+    ---------------------------
+    소계                      19,500원
+    할인                      -1,000원
+    ---------------------------
+    총 결제금액                18,500원
+    
+    카드결제                  18,500원
+    승인번호: 12345678
+    """
+    
+    # Mock LLM-based parsing - this should return structured data
+    ocr_service_mock.parse_store_name.return_value = "스타벅스 코엑스점"
+    ocr_service_mock.parse_items_and_prices.return_value = [
+        {"name": "아이스 아메리카노 (Tall)", "price": 4500, "quantity": 1},
+        {"name": "카페라떼 (Grande)", "price": 5800, "quantity": 1}, 
+        {"name": "초콜릿 케이크", "price": 6200, "quantity": 1},
+        {"name": "쿠키", "price": 3000, "quantity": 1}
+    ]
+    ocr_service_mock.parse_date.return_value = "2024-09-08 12:34:56"
+    
+    # When
+    receipt = receipt_parser.create_receipt_from_ocr_result(user, korean_ocr_text)
+    
+    # Then
+    assert receipt is not None
+    assert receipt.store.name == "스타벅스 코엑스점"
+    assert len(receipt.items) == 4
+    
+    # Verify LLM parsed items correctly (ignoring meta lines like 소계, 할인, 총계)
+    items = receipt.items
+    assert items[0].name == "아이스 아메리카노 (Tall)"
+    assert items[0].price == 4500
+    assert items[1].name == "카페라떼 (Grande)"
+    assert items[1].price == 5800
+    assert items[2].name == "초콜릿 케이크"
+    assert items[2].price == 6200
+    assert items[3].name == "쿠키"
+    assert items[3].price == 3000
+    
+    # Should calculate correct total from items (not including discount)
+    total_from_items = sum(item.calculate_total() for item in items)
+    assert total_from_items == 19500  # Sum of individual items before discount
+    
+    # Verify OCR service was called with raw text
+    ocr_service_mock.parse_store_name.assert_called_once_with(korean_ocr_text)
+    ocr_service_mock.parse_items_and_prices.assert_called_once_with(korean_ocr_text)
+    ocr_service_mock.parse_date.assert_called_once_with(korean_ocr_text)
