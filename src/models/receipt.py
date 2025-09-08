@@ -11,7 +11,7 @@ class Receipt:
         self.store = store
         self.items: List[ReceiptItem] = []
         self.purchase_date = purchase_date
-        self.participants: List[Any] = []
+        self.participants: List['User'] = []
         self.uploader = user
 
     def add_item(self, name: str, price: Any, quantity: int) -> None:
@@ -23,7 +23,7 @@ class Receipt:
         """Append a ReceiptItem object."""
         self.items.append(item)
 
-    def add_participant(self, user: Any) -> None:
+    def add_participant(self, user: 'User') -> None:
         """Add a participant to the receipt."""
         self.participants.append(user)
 

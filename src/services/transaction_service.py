@@ -13,6 +13,9 @@ class TransactionResult:
 
 
 class TransactionService:
+    def __init__(self, split_service: SplitService = None):
+        self.split_service = split_service or SplitService()
+    
     def process_transaction(self, receipt, use_deposit=False):
         total_amount: Decimal = receipt.calculate_total()
         
@@ -43,88 +46,9 @@ class TransactionService:
                 cash_paid=total_amount,
             )
 
-    def process_split_payment(self, receipt, use_deposit=False) -> Dict[Any, TransactionResult]:
-        """Process split payment for multiple users based on item assignments."""
-        split_service = SplitService()
-        user_amounts = split_service.split_receipt_by_user_assignment(receipt)
-        
-        results = {}
-        
-        for user, amount in user_amounts.items():
-            if use_deposit:
-                if user.deposit >= amount:
-                    user.subtract_deposit(amount)
-                    results[user] = TransactionResult(
-                        success=True,
-                        amount_paid=amount,
-                        deposit_used=amount,
-                        cash_paid=Decimal("0"),
-                    )
-                else:
-                    # Insufficient deposit for this user
-                    results[user] = TransactionResult(
-                        success=False,
-                        amount_paid=Decimal("0"),
-                        deposit_used=Decimal("0"),
-                        cash_paid=Decimal("0"),
-                    )
-            else:
-                # Process with cash payment for each user
-                results[user] = TransactionResult(
-                    success=True,
-                    amount_paid=amount,
-                    deposit_used=Decimal("0"),
-                    cash_paid=amount,
-                )
-        
-        return results
-
-    def rollback_on_insufficient_funds(self, receipt, use_deposit=False) -> Dict[Any, TransactionResult]:
-        """Process split payment with all-or-nothing rollback on any insufficient funds."""
-        split_service = SplitService()
-        user_amounts = split_service.split_receipt_by_user_assignment(receipt)
-        
-        if use_deposit:
-            # First, check if all users have sufficient funds
-            for user, amount in user_amounts.items():
-                if user.deposit < amount:
-                    # Insufficient funds detected - return all failures without any changes
-                    return {
-                        user: TransactionResult(
-                            success=False,
-                            amount_paid=Decimal("0"),
-                            deposit_used=Decimal("0"),
-                            cash_paid=Decimal("0"),
-                        ) for user in user_amounts.keys()
-                    }
-            
-            # All users have sufficient funds - process all payments
-            results = {}
-            for user, amount in user_amounts.items():
-                user.subtract_deposit(amount)
-                results[user] = TransactionResult(
-                    success=True,
-                    amount_paid=amount,
-                    deposit_used=amount,
-                    cash_paid=Decimal("0"),
-                )
-        else:
-            # Cash payment - always successful
-            results = {}
-            for user, amount in user_amounts.items():
-                results[user] = TransactionResult(
-                    success=True,
-                    amount_paid=amount,
-                    deposit_used=Decimal("0"),
-                    cash_paid=amount,
-                )
-        
-        return results
-
     def handle_partial_payment_failures(self, receipt, use_deposit=False) -> Dict[Any, TransactionResult]:
         """Process split payment allowing partial failures without rollback."""
-        split_service = SplitService()
-        user_amounts = split_service.split_receipt_by_user_assignment(receipt)
+        user_amounts = self.split_service.split_receipt_by_user_assignment(receipt)
         
         results = {}
         
@@ -159,8 +83,7 @@ class TransactionService:
 
     def rollback_on_insufficient_funds(self, receipt, use_deposit=False) -> Dict[Any, TransactionResult]:
         """Process split payment with all-or-nothing rollback on any insufficient funds."""
-        split_service = SplitService()
-        user_amounts = split_service.split_receipt_by_user_assignment(receipt)
+        user_amounts = self.split_service.split_receipt_by_user_assignment(receipt)
         
         if use_deposit:
             # First, check if all users have sufficient funds

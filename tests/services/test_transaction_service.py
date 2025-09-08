@@ -77,7 +77,7 @@ def test_should_process_split_payment_for_multiple_users():
     
     # Process split payment
     transaction_service = TransactionService()
-    results = transaction_service.process_split_payment(receipt, use_deposit=True)
+    results = transaction_service.handle_partial_payment_failures(receipt, use_deposit=True)
     
     # Verify split payment results
     assert len(results) == 3
