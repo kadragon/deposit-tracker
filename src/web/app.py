@@ -171,6 +171,277 @@ def create_app(
         result += 'deposit-choice'
         
         return result
+    
+    @app.route('/assign-items', methods=['GET', 'POST'])
+    def assign_items():
+        if request.method == 'POST':
+            # Process item assignments
+            if request.is_json:
+                assignment_data = request.get_json()
+                store_id = assignment_data.get('store_id', '')
+                item_assignments = assignment_data.get('item_assignments', [])
+                
+                # Store assignments in session for later processing
+                session['item_assignments'] = item_assignments
+                session['assignment_store_id'] = store_id
+                
+                # Return success response with assignment data
+                response_data = {
+                    'message': 'assignment-success',
+                    'assignments': item_assignments
+                }
+                return jsonify(response_data)
+        
+        # GET request - display assignment page
+        store_id = request.args.get('store_id', '')
+        
+        # Get store information
+        store_name = ''
+        if store_repo and store_id:
+            store = store_repo.get_by_id(store_id)
+            raw_store_name = _get_value(store, 'name')
+            if raw_store_name:
+                store_name = str(escape(raw_store_name))
+        
+        # Get parsed items from session
+        items = session.get('parsed_items', [])
+        
+        # Get all users for assignment
+        users = user_repo.list_all()
+        
+        result = f'item-assignment{store_name}'
+        
+        # Add items to result
+        for item in items:
+            name = item.get('name', '')
+            price = item.get('price', 0)
+            quantity = item.get('quantity', 1)
+            result += f'{name}{price}'
+        
+        # Add user list section
+        result += 'user-list'
+        for user in users:
+            result += str(_get_value(user, 'name'))
+        
+        return result
+
+    @app.route('/calculate-amounts', methods=['POST'])
+    def calculate_amounts():
+        if not request.is_json:
+            return _json_error('invalid_request', 'JSON required', 400)
+        
+        data = request.get_json()
+        item_assignments = data.get('item_assignments', [])
+        
+        # Get parsed items from session
+        items = session.get('parsed_items', [])
+        
+        if not items:
+            return _json_error('no_items', 'No items found in session', 400)
+        
+        # Calculate amounts per user
+        user_amounts = {}
+        total_amount = 0
+        
+        for assignment in item_assignments:
+            item_index = int(assignment.get('item_index', 0))
+            
+            if item_index >= len(items):
+                continue
+                
+            item = items[item_index]
+            item_price = int(item.get('price', 0))
+            item_quantity = int(item.get('quantity', 1))
+            item_total = item_price * item_quantity
+            
+            sharing_type = assignment.get('sharing_type', 'individual')
+            
+            if sharing_type == 'shared':
+                # Handle shared items
+                shared_users = assignment.get('shared_users', [])
+                sharing_ratio = assignment.get('sharing_ratio', [])
+                
+                if len(shared_users) == len(sharing_ratio):
+                    for i, user_id in enumerate(shared_users):
+                        ratio = sharing_ratio[i]
+                        user_amount = int(item_total * ratio)
+                        user_amounts[user_id] = user_amounts.get(user_id, 0) + user_amount
+                else:
+                    # Equal sharing if no ratio provided
+                    per_user_amount = item_total // len(shared_users)
+                    for user_id in shared_users:
+                        user_amounts[user_id] = user_amounts.get(user_id, 0) + per_user_amount
+            else:
+                # Individual assignment
+                user_id = assignment.get('user_id')
+                if user_id:
+                    user_amounts[user_id] = user_amounts.get(user_id, 0) + item_total
+            
+            total_amount += item_total
+        
+        response_data = {
+            'message': 'calculation-result',
+            'user_amounts': user_amounts,
+            'total_amount': total_amount
+        }
+        
+        return jsonify(response_data)
+
+    @app.route('/validate-assignments', methods=['POST'])
+    def validate_assignments():
+        if not request.is_json:
+            return _json_error('invalid_request', 'JSON required', 400)
+        
+        data = request.get_json()
+        item_assignments = data.get('item_assignments', [])
+        
+        # Get parsed items from session
+        items = session.get('parsed_items', [])
+        
+        if not items:
+            return _json_error('no_items', 'No items found in session', 400)
+        
+        # Check which items are not assigned
+        assigned_indices = set()
+        for assignment in item_assignments:
+            item_index = int(assignment.get('item_index', -1))
+            if 0 <= item_index < len(items):
+                assigned_indices.add(item_index)
+        
+        unassigned_items = []
+        for i, item in enumerate(items):
+            if i not in assigned_indices:
+                unassigned_items.append({
+                    'index': i,
+                    'name': item.get('name', ''),
+                    'price': item.get('price', 0),
+                    'quantity': item.get('quantity', 1)
+                })
+        
+        if unassigned_items:
+            return jsonify({
+                'error': 'validation-error',
+                'message': 'unassigned-items',
+                'unassigned_items': unassigned_items
+            }), 400
+        
+        return jsonify({'message': 'validation-success'})
+
+    @app.route('/payment-summary')
+    def payment_summary():
+        # Get split assignments from session
+        split_assignments = session.get('split_assignments', {})
+        store_id = session.get('assignment_store_id', '')
+        
+        if not split_assignments:
+            return 'No split assignments found', 400
+        
+        # Get store information
+        store_name = ''
+        if store_repo and store_id:
+            store = store_repo.get_by_id(store_id)
+            raw_store_name = _get_value(store, 'name')
+            if raw_store_name:
+                store_name = str(escape(raw_store_name))
+        
+        result = f'payment-summary{store_name}'
+        
+        # Add user payment details
+        insufficient_balance_users = []
+        
+        for user_id, amount in split_assignments.items():
+            user = user_repo.get_by_id(user_id)
+            if user:
+                user_name = _get_value(user, 'name')
+                user_deposit = _get_value(user, 'deposit')
+                
+                result += f'{user_name}{amount}'
+                result += f'deposit-balance{user_deposit}'
+                
+                # Check for insufficient balance
+                if user_deposit and amount > user_deposit:
+                    insufficient_balance_users.append(user_id)
+        
+        # Add insufficient balance warnings
+        if insufficient_balance_users:
+            result += 'insufficient-balance-warning'
+            for user_id in insufficient_balance_users:
+                result += user_id
+        
+        return result
+
+    @app.route('/select-payment-methods', methods=['POST'])
+    def select_payment_methods():
+        if not request.is_json:
+            return _json_error('invalid_request', 'JSON required', 400)
+        
+        data = request.get_json()
+        store_id = data.get('store_id', '')
+        user_payments = data.get('user_payments', [])
+        
+        # Store payment method selections in session
+        session['payment_methods'] = user_payments
+        session['payment_store_id'] = store_id
+        
+        response_data = {
+            'message': 'payment-methods-selected',
+            'user_payments': user_payments
+        }
+        
+        return jsonify(response_data)
+
+    @app.route('/process-split-payment', methods=['POST'])
+    def process_split_payment():
+        if not request.is_json:
+            return _json_error('invalid_request', 'JSON required', 400)
+        
+        data = request.get_json()
+        store_id = data.get('store_id', '')
+        user_payments = data.get('user_payments', [])
+        
+        if not user_payments:
+            return _json_error('no_payments', 'No user payments provided', 400)
+        
+        # Process each user payment
+        processed_users = []
+        
+        for payment in user_payments:
+            user_id = payment.get('user_id')
+            amount = payment.get('amount', 0)
+            method = payment.get('method', 'deposit')
+            
+            if not user_id:
+                continue
+                
+            user = user_repo.get_by_id(user_id)
+            if not user:
+                continue
+            
+            # Process payment based on method
+            if method == 'deposit':
+                try:
+                    amount_decimal = Decimal(str(amount))
+                    user.subtract_deposit(amount_decimal)
+                    user_repo.save(user)
+                    
+                    # Award coupon for deposit payment
+                    if coupon_service:
+                        coupon_service.award_coupon_for_purchase(user_id, store_id)
+                    
+                    processed_users.append(user_id)
+                except Exception:
+                    # Handle insufficient funds or other errors
+                    continue
+            # For 'cash' payments, we don't deduct from deposit but still track
+            elif method == 'cash':
+                processed_users.append(user_id)
+        
+        response_data = {
+            'message': 'multi-user-payment-success',
+            'processed_users': processed_users
+        }
+        
+        return jsonify(response_data)
 
     @app.route('/process-receipt', methods=['POST'])
     def process_receipt():
