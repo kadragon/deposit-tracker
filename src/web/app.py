@@ -54,7 +54,7 @@ def _to_serializable(value):
     try:
         # Fall back to basic types
         return value
-    except Exception:
+    except TypeError:
         return str(value)
 
 def _first_value(source, keys: list[str], default=''):
@@ -452,25 +452,56 @@ def create_app(
         if not user_payments:
             return _json_error('no_payments', 'No user payments provided', 400)
         
-        # Process each user payment
+        # Process each user payment - collect all operations first for atomicity
         processed_users = []
+        failed_payments = []
+        payment_operations = []
         
+        # Pre-validate all payments
         for payment in user_payments:
             user_id = payment.get('user_id')
             amount = payment.get('amount', 0)
             method = payment.get('method', 'deposit')
             
             if not user_id:
+                failed_payments.append({'user_id': user_id, 'error': 'missing_user_id'})
                 continue
                 
             user = user_repo.get_by_id(user_id)
             if not user:
+                failed_payments.append({'user_id': user_id, 'error': 'user_not_found'})
                 continue
             
-            # Process payment based on method
             if method == 'deposit':
                 try:
                     amount_decimal = Decimal(str(amount))
+                    # Check sufficient funds before any operations
+                    if getattr(user, 'deposit', Decimal('0')) < amount_decimal:
+                        failed_payments.append({'user_id': user_id, 'error': 'insufficient_funds'})
+                        continue
+                    payment_operations.append({'user': user, 'user_id': user_id, 'amount': amount_decimal, 'method': method})
+                except (ValueError, TypeError, InvalidOperation) as e:
+                    failed_payments.append({'user_id': user_id, 'error': f'invalid_amount: {str(e)}'})
+                    continue
+            elif method == 'cash':
+                payment_operations.append({'user': None, 'user_id': user_id, 'amount': amount, 'method': method})
+        
+        # If any pre-validation failed, return error before processing anything
+        if failed_payments:
+            return jsonify({
+                'error': 'payment_validation_failed',
+                'message': 'Some payments could not be processed',
+                'failed_payments': failed_payments
+            }), 400
+        
+        # Now process all validated payments
+        for operation in payment_operations:
+            if operation['method'] == 'deposit':
+                try:
+                    user = operation['user']
+                    amount_decimal = operation['amount']
+                    user_id = operation['user_id']
+                    
                     user.subtract_deposit(amount_decimal)
                     user_repo.save(user)
                     
@@ -479,12 +510,22 @@ def create_app(
                         coupon_service.award_coupon_for_purchase(user_id, store_id)
                     
                     processed_users.append(user_id)
-                except Exception:
-                    # Handle insufficient funds or other errors
-                    continue
-            # For 'cash' payments, we don't deduct from deposit but still track
-            elif method == 'cash':
-                processed_users.append(user_id)
+                except Exception as e:
+                    # Even with pre-validation, save/coupon operations can fail
+                    failed_payments.append({'user_id': operation['user_id'], 'error': f'processing_error: {str(e)}'})
+            elif operation['method'] == 'cash':
+                processed_users.append(operation['user_id'])
+        
+        # Return result with both successes and any processing failures
+        result = {
+            'message': 'multi-user-payment-processed',
+            'processed_users': processed_users
+        }
+        if failed_payments:
+            result['failed_payments'] = failed_payments
+            result['partial_success'] = True
+        
+        return jsonify(result), 200 if not failed_payments else 207
         
         response_data = {
             'message': 'multi-user-payment-success',
@@ -610,11 +651,7 @@ def create_app(
             return redirect(url_for('admin_login'))
         
         # Ensure user exists; return 404 for unknown users
-        user = None
-        try:
-            user = user_repo.get_by_id(user_id)
-        except Exception:
-            user = None
+        user = user_repo.get_by_id(user_id)
         if not user:
             abort(404)
 
@@ -655,30 +692,48 @@ def create_app(
 
         # Apply deposit to each valid user
         users_to_save = []
+        successful_users = []
+        failed_users = []
         enable_bulk = (os.environ.get('ENABLE_BULK_SAVE') or '').lower() in ('1', 'true', 'yes')
         has_bulk_method = hasattr(user_repo, 'save_many')
+        
         for user_id in user_ids:
+            user = user_repo.get_by_id(user_id)
+            if not user:
+                failed_users.append({'user_id': user_id, 'error': 'user_not_found'})
+                continue
+                
             try:
-                user = user_repo.get_by_id(user_id)
-            except Exception:
-                user = None
-            if user:
-                try:
-                    user.add_deposit(amount_decimal)
-                    users_to_save.append(user)
-                    # Save immediately unless bulk mode is explicitly enabled
-                    if not (enable_bulk and has_bulk_method):
-                        user_repo.save(user)
-                except Exception:
-                    # Skip problematic users; continue others
-                    continue
+                user.add_deposit(amount_decimal)
+                users_to_save.append(user)
+                # Save immediately unless bulk mode is explicitly enabled
+                if not (enable_bulk and has_bulk_method):
+                    user_repo.save(user)
+                    successful_users.append(user_id)
+            except Exception as e:
+                failed_users.append({'user_id': user_id, 'error': f'deposit_error: {str(e)}'})
+                continue
+                
         # Try optional bulk save if enabled and repository supports it
         if enable_bulk and has_bulk_method and users_to_save:
             try:
                 user_repo.save_many(users_to_save)
-            except Exception:
-                # Ignore bulk errors; individual saves already performed
-                pass
+                successful_users.extend([getattr(u, 'id', '') for u in users_to_save])
+            except Exception as e:
+                # If bulk save fails, try individual saves as fallback
+                for user in users_to_save:
+                    try:
+                        user_repo.save(user)
+                        successful_users.append(getattr(user, 'id', ''))
+                    except Exception as individual_error:
+                        failed_users.append({
+                            'user_id': getattr(user, 'id', ''),
+                            'error': f'individual_save_error: {str(individual_error)}'
+                        })
+        
+        # For now, just redirect to admin_users (UI doesn't show detailed results)
+        # In a production app, you might want to show success/failure counts
+        # TODO: Consider adding flash messages or query params to show results
         
         return redirect(url_for('admin_users'))
     

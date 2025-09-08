@@ -184,7 +184,10 @@ def test_should_process_multi_user_payment():
     # Then: Should process payments successfully
     assert response.status_code == 200
     data = response.get_json()
-    assert 'multi-user-payment-success' in str(data)
+    assert data['message'] == 'multi-user-payment-processed'
+    assert 'processed_users' in data
+    assert 'user1' in data['processed_users']
+    assert 'user2' in data['processed_users']
     
     # And: Should deduct from user deposits
     user1.subtract_deposit.assert_called_once_with(Decimal('15000'))

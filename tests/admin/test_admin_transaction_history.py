@@ -205,18 +205,20 @@ class TestAdminTransactionHistory:
         
         self.receipt_repo.generate_financial_report.return_value = report_data
         
-        response = client.get('/admin/transactions/financial-report?format=json')
+        response = client.get('/admin/transactions/financial-report?format=json', headers={'Accept': 'application/json'})
         assert response.status_code == 200
-        content = response.get_data(as_text=True)
         
-        # Check financial report data is displayed
-        assert 'financial-report' in content
-        assert '500.0' in content  # total amount
-        assert '300.0' in content  # deposit payments
-        assert '200.0' in content  # cash payments
-        assert 'User1' in content
-        assert 'User2' in content
-        assert 'Store1' in content
-        assert 'Store2' in content
+        # Parse JSON response to properly test JSON endpoint
+        data = response.get_json()
+        assert data is not None
+        assert data['total_transactions'] == 5
+        assert data['total_amount'] == '500.0'  # Should be serialized as string
+        assert data['deposit_payments'] == '300.0'
+        assert data['cash_payments'] == '200.0'
+        assert len(data['by_user']) == 2
+        assert data['by_user'][0]['user_name'] == 'User1'
+        assert data['by_user'][0]['total_spent'] == '200.0'
+        assert len(data['by_store']) == 2
+        assert data['by_store'][0]['store_name'] == 'Store1'
         
         self.receipt_repo.generate_financial_report.assert_called_once()

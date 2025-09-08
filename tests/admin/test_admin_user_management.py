@@ -149,3 +149,32 @@ class TestAdminUserManagement:
         user2.add_deposit.assert_called_once_with(Decimal('50.0'))
         self.user_repo.save.assert_any_call(user1)
         self.user_repo.save.assert_any_call(user2)
+    
+    @patch.dict('os.environ', {'ENABLE_BULK_SAVE': 'true'})
+    def test_should_use_bulk_save_when_enabled_and_supported(self, client):
+        # Log in as admin
+        with client.session_transaction() as sess:
+            sess['admin_logged_in'] = True
+        
+        # Mock users for bulk operation
+        user1 = Mock()
+        user1.name = 'User1'
+        user1.deposit = Decimal('100.0')
+        user2 = Mock()
+        user2.name = 'User2' 
+        user2.deposit = Decimal('200.0')
+        
+        # Mock repository with bulk save capability
+        self.user_repo.get_by_id.side_effect = lambda uid: user1 if uid == 'user1' else user2
+        self.user_repo.save_many = Mock()  # Add bulk save method
+        
+        response = client.post('/admin/users/bulk-deposit', data={
+            'amount': '50.0',
+            'user_ids': 'user1,user2'
+        })
+        assert response.status_code == 302
+        
+        # Verify bulk save was called instead of individual saves
+        self.user_repo.save_many.assert_called_once()
+        # Individual saves should not be called when bulk is enabled and available
+        assert self.user_repo.save.call_count == 0
