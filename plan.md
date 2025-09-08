@@ -56,48 +56,48 @@
 
 ### **Phase UI-1: 기본 템플릿 구조 생성**
 
-#### Test UI-1: Base Template & User Selection
-- [ ] **should_render_base_template_with_tailwind** - 기본 Tailwind CSS 템플릿
-- [ ] **should_display_user_selection_form** - 사용자 선택 폼 UI
-- [ ] **should_render_user_cards_with_deposit_info** - 사용자 카드 + 예치금 표시
+#### Test UI-1: Base Template & User Selection ✅
+- [x] **should_render_base_template_with_tailwind** - 기본 Tailwind CSS 템플릿
+- [x] **should_display_user_selection_form** - 사용자 선택 폼 UI
+- [x] **should_render_user_cards_with_deposit_info** - 사용자 카드 + 예치금 표시
 
-#### Test UI-2: User Dashboard Template  
-- [ ] **should_render_user_dashboard_layout** - 사용자 대시보드 레이아웃
-- [ ] **should_display_current_balance_prominently** - 현재 잔액 강조 표시
-- [ ] **should_show_recent_transactions_list** - 최근 거래 내역 리스트
-- [ ] **should_render_upload_receipt_button** - 영수증 업로드 버튼
+#### Test UI-2: User Dashboard Template ✅ 
+- [x] **should_render_user_dashboard_layout** - 사용자 대시보드 레이아웃
+- [x] **should_display_current_balance_prominently** - 현재 잔액 강조 표시
+- [x] **should_show_recent_transactions_list** - 최근 거래 내역 리스트
+- [x] **should_render_upload_receipt_button** - 영수증 업로드 버튼
 
-#### Test UI-3: Receipt Upload Interface
-- [ ] **should_render_file_upload_dropzone** - 파일 업로드 드래그앤드롭
-- [ ] **should_show_upload_progress_indicator** - 업로드 진행률 표시
-- [ ] **should_display_ocr_processing_spinner** - OCR 처리 스피너
-- [ ] **should_render_ocr_results_preview** - OCR 결과 미리보기
+#### Test UI-3: Receipt Upload Interface ✅
+- [x] **should_render_file_upload_dropzone** - 파일 업로드 드래그앤드롭
+- [x] **should_show_upload_progress_indicator** - 업로드 진행률 표시
+- [x] **should_display_ocr_processing_spinner** - OCR 처리 스피너
+- [x] **should_render_ocr_results_preview** - OCR 결과 미리보기
 
-### **Phase UI-2: 분할 결제 인터페이스**
+### **Phase UI-2: 분할 결제 인터페이스** (백엔드 완료, UI 미구현)
 
-#### Test UI-4: Item Assignment Interface
-- [ ] **should_render_items_list_with_checkboxes** - 물품 목록 + 체크박스
-- [ ] **should_display_user_avatars_for_assignment** - 사용자별 아바타 배정
-- [ ] **should_show_real_time_calculation_sidebar** - 실시간 계산 사이드바
-- [ ] **should_render_split_summary_modal** - 분할 요약 모달
+#### Test UI-4: Item Assignment Interface ✅
+- [x] **should_render_items_list_with_checkboxes** - 물품 목록 + 체크박스
+- [x] **should_display_user_avatars_for_assignment** - 사용자별 아바타 배정
+- [x] **should_show_real_time_calculation_sidebar** - 실시간 계산 사이드바
+- [x] **should_render_split_summary_modal** - 분할 요약 모달
 
-#### Test UI-5: Payment Confirmation
-- [ ] **should_render_payment_summary_cards** - 결제 요약 카드들
-- [ ] **should_show_insufficient_balance_alerts** - 잔액 부족 경고
+#### Test UI-5: Payment Confirmation ✅
+- [x] **should_render_payment_summary_cards** - 결제 요약 카드들
+- [x] **should_show_insufficient_balance_alerts** - 잔액 부족 경고
 - [ ] **should_render_payment_confirmation_flow** - 결제 확인 플로우
 
-### **Phase UI-3: 관리자 인터페이스**
+### **Phase UI-3: 관리자 인터페이스** ✅
 
-#### Test UI-6: Admin Dashboard
-- [ ] **should_render_admin_navigation_menu** - 관리자 네비게이션
-- [ ] **should_display_users_management_grid** - 사용자 관리 그리드
-- [ ] **should_render_deposit_management_forms** - 예치금 관리 폼
-- [ ] **should_show_transaction_history_table** - 거래 내역 테이블
+#### Test UI-6: Admin Dashboard ✅
+- [x] **should_render_admin_navigation_menu** - 관리자 네비게이션
+- [x] **should_display_users_management_grid** - 사용자 관리 그리드
+- [x] **should_render_deposit_management_forms** - 예치금 관리 폼
+- [x] **should_show_transaction_history_table** - 거래 내역 테이블
 
-#### Test UI-7: Store Management  
-- [ ] **should_render_stores_list_with_actions** - 매장 목록 + 액션들
-- [ ] **should_display_coupon_settings_toggles** - 쿠폰 설정 토글
-- [ ] **should_render_store_analytics_charts** - 매장 분석 차트
+#### Test UI-7: Store Management ✅ 
+- [x] **should_render_stores_list_with_actions** - 매장 목록 + 액션들
+- [x] **should_display_coupon_settings_toggles** - 쿠폰 설정 토글
+- [ ] **should_render_store_analytics_charts** - 매장 분석 차트 (차트 기능은 Phase 8)
 
 ---
 

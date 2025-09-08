@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}관리자 페이지 - 공동 영수증 분할 시스템{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        admin: '#7C3AED'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Admin Navigation -->
+    <nav class="bg-admin text-white shadow-lg">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="text-xl font-bold">관리자 페이지</div>
+                <div class="space-x-4">
+                    <a href="/admin/users" class="hover:text-purple-200 transition-colors">사용자 관리</a>
+                    <a href="/admin/stores" class="hover:text-purple-200 transition-colors">매장 관리</a>
+                    <a href="/admin/transactions" class="hover:text-purple-200 transition-colors">거래 내역</a>
+                    <form method="post" action="/admin/logout" class="inline">
+                        <button type="submit" class="hover:text-purple-200 transition-colors">로그아웃</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

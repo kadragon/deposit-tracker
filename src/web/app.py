@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, url_for, abort, jsonify, session
+from flask import Flask, request, redirect, url_for, abort, jsonify, session, render_template
 from decimal import Decimal, InvalidOperation
 import os
 import os
@@ -130,12 +130,7 @@ def create_app(
             return 'No user selected', 400
 
         users = user_repo.list_all()
-
-        result = 'user-selection'
-        for user in users:
-            result += str(_get_value(user, 'name'))
-
-        return result
+        return render_template('user_selection.html', users=users)
 
     @app.route('/dashboard/<user_id>')
     def dashboard(user_id):
@@ -149,31 +144,13 @@ def create_app(
         uploaded_receipts = receipt_repo.find_by_uploader(user_id)
         pending_split_requests = receipt_repo.find_pending_split_requests(user_id)
 
-        result = f"{_get_value(user, 'name')}{_get_value(user, 'deposit')}"
-        for receipt in receipts:
-            store_name = _first_value(receipt, ['store_name', 'store', 'store_id'])
-            total_amount = _first_value(receipt, ['total_amount', 'total'])
-            result += f"{store_name}{total_amount}"
-        for coupon in coupons:
-            store_name = _get_value(coupon, 'store_name')
-            count = _get_value(coupon, 'count')
-            goal = _get_value(coupon, 'goal')
-            result += f"{store_name}{count}{goal}"
-        for transaction in split_transactions:
-            store_name = transaction.get('store_name', '')
-            user_amount = transaction.get('user_amount', 0)
-            result += f"{store_name}{user_amount}"
-        for uploaded in uploaded_receipts:
-            store_name = uploaded.get('store_name', '')
-            total_amount = uploaded.get('total_amount', 0)
-            result += f"{store_name}{total_amount}"
-        for pending in pending_split_requests:
-            store_name = pending.get('store_name', '')
-            total_amount = pending.get('total_amount', 0)
-            uploader_name = pending.get('uploader_name', '')
-            result += f"{store_name}{total_amount}{uploader_name}"
-
-        return result
+        return render_template('dashboard.html', 
+                             user=user,
+                             receipts=receipts,
+                             coupons=coupons,
+                             split_transactions=split_transactions,
+                             uploaded_receipts=uploaded_receipts,
+                             pending_split_requests=pending_split_requests)
 
     @app.route('/upload', methods=['GET', 'POST'])
     def upload_form():
@@ -209,7 +186,7 @@ def create_app(
             # Redirect to confirmation with canonical identifiers
             return redirect(url_for('confirm_receipt', store_id=store_id, total=str(total_amount)))
 
-        return 'upload-form'
+        return render_template('upload.html')
 
     @app.route('/csrf-token', methods=['GET'])
     def csrf_token():
@@ -279,21 +256,19 @@ def create_app(
         # Get all users for assignment
         users = user_repo.list_all()
         
-        result = f'item-assignment{store_name}'
-        
-        # Add items to result
-        for item in items:
-            name = item.get('name', '')
-            price = item.get('price', 0)
-            quantity = item.get('quantity', 1)
-            result += f'{name}{price}'
-        
-        # Add user list section
-        result += 'user-list'
+        # Convert users to dict format for template
+        user_list = []
         for user in users:
-            result += str(_get_value(user, 'name'))
+            user_list.append({
+                'id': _get_value(user, 'id'),
+                'name': str(_get_value(user, 'name'))
+            })
         
-        return result
+        return render_template('assign_items.html', 
+                             items=items, 
+                             users=user_list, 
+                             store_name=store_name, 
+                             store_id=store_id)
 
     @app.route('/calculate-amounts', methods=['POST'])
     def calculate_amounts():
@@ -414,31 +389,36 @@ def create_app(
             if raw_store_name:
                 store_name = str(escape(raw_store_name))
         
-        result = f'payment-summary{store_name}'
-        
-        # Add user payment details
-        insufficient_balance_users = []
+        # Prepare user payment data for template
+        user_payments = []
+        insufficient_balance_count = 0
+        total_amount = 0
         
         for user_id, amount in split_assignments.items():
             user = user_repo.get_by_id(user_id)
             if user:
-                user_name = _get_value(user, 'name')
-                user_deposit = _get_value(user, 'deposit')
+                user_name = str(_get_value(user, 'name'))
+                user_deposit = _get_value(user, 'deposit') or 0
                 
-                result += f'{user_name}{amount}'
-                result += f'deposit-balance{user_deposit}'
+                insufficient_balance = user_deposit < amount
+                if insufficient_balance:
+                    insufficient_balance_count += 1
                 
-                # Check for insufficient balance
-                if user_deposit and amount > user_deposit:
-                    insufficient_balance_users.append(user_id)
+                user_payments.append({
+                    'user_id': user_id,
+                    'name': user_name,
+                    'amount': amount,
+                    'deposit': user_deposit,
+                    'insufficient_balance': insufficient_balance
+                })
+                
+                total_amount += amount
         
-        # Add insufficient balance warnings
-        if insufficient_balance_users:
-            result += 'insufficient-balance-warning'
-            for user_id in insufficient_balance_users:
-                result += user_id
-        
-        return result
+        return render_template('payment_summary.html',
+                             user_payments=user_payments,
+                             store_name=store_name,
+                             total_amount=total_amount,
+                             insufficient_balance_count=insufficient_balance_count)
 
     @app.route('/select-payment-methods', methods=['POST'])
     def select_payment_methods():
@@ -640,10 +620,7 @@ def create_app(
         
         # Display all users
         users = user_repo.list_all()
-        result = 'admin-users'
-        for user in users:
-            result += f'{_get_value(user, "name")}{_get_value(user, "deposit")}'
-        return result
+        return render_template('admin_users.html', users=users)
     
     @app.route('/admin/users/<user_id>/add-deposit', methods=['POST'])
     def admin_add_deposit(user_id):
@@ -780,10 +757,7 @@ def create_app(
         
         # Display all stores
         stores = store_repo.list_all()
-        result = 'admin-stores'
-        for store in stores:
-            result += f'{_get_value(store, "name")}{_get_value(store, "coupon_enabled")}{_get_value(store, "coupon_goal")}'
-        return result
+        return render_template('admin_stores.html', stores=stores)
     
     @app.route('/admin/stores/<store_id>/toggle-coupon', methods=['POST'])
     def admin_toggle_coupon(store_id):
@@ -864,14 +838,7 @@ def create_app(
                 })
             return jsonify({'transactions': items})
 
-        result = 'admin-transactions'
-        for receipt in receipts:
-            user_name = _first_value(receipt, ["user_name", "user", "user_id"])
-            store_n = _first_value(receipt, ["store_name", "store", "store_id"])
-            total = _first_value(receipt, ["total_amount", "total"])
-            date_val = _first_value(receipt, ["date", "created_at"])
-            result += f'{user_name}{store_n}{total}{date_val}'
-        return result
+        return render_template('admin_transactions.html', receipts=receipts)
     
     @app.route('/admin/transactions/<receipt_id>/split-details')
     def admin_transaction_split_details(receipt_id):

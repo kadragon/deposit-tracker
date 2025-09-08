@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}사용자 선택 - 공동 영수증 분할 시스템{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <h1 class="text-2xl font-bold text-gray-800 mb-8">사용자를 선택해주세요</h1>
+    
+    <form method="post" class="space-y-6">
+        <div class="grid grid-cols-1 gap-4">
+            {% for user in users %}
+            <label class="block">
+                <input type="radio" name="user_id" value="{{ user.id }}" class="sr-only peer">
+                <div class="p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-primary peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white transition-all">
+                    <div class="font-semibold">{{ user.name }}</div>
+                    <div class="text-sm text-gray-500 peer-checked:text-blue-100">
+                        예치금: {{ user.deposit }}원
+                    </div>
+                </div>
+            </label>
+            {% endfor %}
+        </div>
+        
+        {% if users %}
+        <button type="submit" class="w-full bg-primary text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-600 transition-colors">
+            선택 완료
+        </button>
+        {% else %}
+        <div class="text-gray-500">등록된 사용자가 없습니다.</div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}
