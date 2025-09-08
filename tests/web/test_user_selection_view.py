@@ -18,7 +18,8 @@ def test_should_display_user_selection_page():
     response = client.get('/')
     
     assert response.status_code == 200
-    assert 'user-selection' in response.get_data(as_text=True)
+    html = response.get_data(as_text=True)
+    assert '사용자를 선택해주세요' in html
 
 
 def test_should_list_all_available_users():

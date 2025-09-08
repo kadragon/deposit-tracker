@@ -47,8 +47,8 @@ class TestAdminStoreManagement:
         content = response.get_data(as_text=True)
         assert 'Store1' in content
         assert 'Store2' in content
-        assert 'True' in content
-        assert 'False' in content
+        assert '활성화' in content
+        assert '비활성화' in content
     
     def test_should_allow_admin_to_create_store(self, client):
         # Log in as admin

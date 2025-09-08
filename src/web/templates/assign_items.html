@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}물품 분할 - 공동 결제 시스템{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-800">물품 분할</h1>
+        {% if store_name %}
+        <div class="text-lg text-gray-600">{{ store_name }}</div>
+        {% endif %}
+    </div>
+
+    <!-- Items List -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">주문 내역</h2>
+        
+        {% if items %}
+        <form id="assign-form" method="post" class="space-y-6">
+            <input type="hidden" name="store_id" value="{{ store_id }}">
+            
+            <div class="space-y-4">
+                {% for item in items %}
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-semibold text-gray-800">{{ item.name }}</h3>
+                            <div class="text-sm text-gray-600">
+                                {{ item.price|currency }}원
+                                {% if item.quantity > 1 %} × {{ item.quantity }}개{% endif %}
+                            </div>
+                        </div>
+                        <div class="text-xl font-bold text-primary">
+                            {{ (item.price * item.quantity)|currency }}원
+                        </div>
+                    </div>
+                    
+                    <!-- User Assignment Checkboxes -->
+                    <div class="border-t pt-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            누가 드셨나요?
+                        </label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {% for user in users %}
+                            <label class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                <input type="checkbox" 
+                                       name="item_{{ loop.index0 }}_users" 
+                                       value="{{ user.id }}"
+                                       class="form-checkbox h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                
+                                <!-- User Avatar -->
+                                <div class="flex items-center space-x-2">
+                                    {% set avatar_colors = [
+                                        'from-blue-500 to-blue-600',
+                                        'from-green-500 to-green-600', 
+                                        'from-purple-500 to-purple-600',
+                                        'from-red-500 to-red-600',
+                                        'from-yellow-500 to-yellow-600',
+                                        'from-pink-500 to-pink-600'
+                                    ] %}
+                                    <div class="w-8 h-8 bg-gradient-to-br {{ avatar_colors[loop.index0 % avatar_colors|length] }} rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                                        {{ user.name[0] if user.name else '?' }}
+                                    </div>
+                                    <span class="text-sm text-gray-700 font-medium">{{ user.name }}</span>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Submit Button -->
+            <div class="flex justify-end space-x-4">
+                <button type="button" onclick="history.back()" 
+                        class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                    취소
+                </button>
+                <button type="button" onclick="showSplitSummaryModal()" 
+                        class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600">
+                    분할 계산하기
+                </button>
+            </div>
+        </form>
+        {% else %}
+        <div class="text-center text-gray-500 py-8">
+            분할할 물품이 없습니다.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Real-time Calculation Sidebar -->
+    <div id="calculation-sidebar" class="bg-gray-50 rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">분할 계산</h3>
+        <div id="calculation-result" class="space-y-2 text-sm text-gray-600">
+            물품을 선택하면 자동으로 계산됩니다.
+        </div>
+    </div>
+
+    <!-- Split Summary Modal -->
+    <div id="split-summary-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center p-6 border-b">
+                <h3 class="text-lg font-semibold text-gray-800">분할 결제 요약</h3>
+                <button onclick="closeSplitSummaryModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Content -->
+            <div class="p-6">
+                <div id="split-breakdown" class="space-y-4">
+                    <!-- Split breakdown will be populated by JavaScript -->
+                </div>
+                
+                <!-- Total Summary -->
+                <div class="border-t pt-4 mt-6">
+                    <div class="flex justify-between items-center text-lg font-semibold">
+                        <span>전체 합계</span>
+                        <span id="total-amount" class="text-primary">0원</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal Actions -->
+            <div class="flex space-x-3 p-6 border-t bg-gray-50 rounded-b-lg">
+                <button onclick="closeSplitSummaryModal()" 
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100">
+                    취소
+                </button>
+                <button onclick="confirmSplit()" 
+                        class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600">
+                    결제 진행
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('assign-form');
+    const calculationResult = document.getElementById('calculation-result');
+    
+    function updateCalculation() {
+        const assignments = {};
+        const items = {{ items|tojson }};
+        const users = {{ users|tojson }};
+        
+        // Calculate split amounts for each user
+        users.forEach(user => {
+            assignments[user.id] = { name: user.name, total: 0, items: [] };
+        });
+        
+        items.forEach((item, itemIndex) => {
+            const checkboxes = form.querySelectorAll(`input[name="item_${itemIndex}_users"]:checked`);
+            const selectedUsers = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (selectedUsers.length > 0) {
+                const itemTotal = item.price * item.quantity;
+                const perPersonAmount = Math.floor(itemTotal / selectedUsers.length);
+                const remainder = itemTotal % selectedUsers.length;
+                
+                selectedUsers.forEach((userId, index) => {
+                    const finalAmount = perPersonAmount + (index < remainder ? 1 : 0);
+                    assignments[userId].total += finalAmount;
+                    assignments[userId].items.push({
+                        name: item.name,
+                        amount: finalAmount
+                    });
+                });
+            }
+        });
+        
+        // Update display
+        let html = '';
+        Object.values(assignments).forEach(assignment => {
+            if (assignment.total > 0) {
+                html += `
+                    <div class="p-3 bg-white rounded border">
+                        <div class="font-semibold text-gray-800">${assignment.name}</div>
+                        <div class="text-lg font-bold text-primary">${assignment.total.toLocaleString()}원</div>
+                    </div>
+                `;
+            }
+        });
+        
+        calculationResult.innerHTML = html || '물품을 선택하면 자동으로 계산됩니다.';
+    }
+    
+    // Add event listeners to all checkboxes
+    form.addEventListener('change', updateCalculation);
+    
+    // Modal functions
+    window.showSplitSummaryModal = function() {
+        const assignments = getCurrentAssignments();
+        populateModalContent(assignments);
+        document.getElementById('split-summary-modal').classList.remove('hidden');
+        document.getElementById('split-summary-modal').classList.add('flex');
+    };
+    
+    window.closeSplitSummaryModal = function() {
+        document.getElementById('split-summary-modal').classList.add('hidden');
+        document.getElementById('split-summary-modal').classList.remove('flex');
+    };
+    
+    window.confirmSplit = function() {
+        // Submit form with assignment data
+        const assignments = getCurrentAssignments();
+        const formData = new FormData();
+        formData.append('assignments', JSON.stringify(assignments));
+        
+        // For now, just redirect to payment confirmation
+        alert('분할 결제를 진행합니다.');
+        closeSplitSummaryModal();
+    };
+    
+    function getCurrentAssignments() {
+        const assignments = {};
+        const items = {{ items|tojson }};
+        const users = {{ users|tojson }};
+        
+        // Initialize assignments
+        users.forEach(user => {
+            assignments[user.id] = { name: user.name, total: 0, items: [] };
+        });
+        
+        // Calculate current assignments
+        items.forEach((item, itemIndex) => {
+            const checkboxes = form.querySelectorAll(`input[name="item_${itemIndex}_users"]:checked`);
+            const selectedUsers = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (selectedUsers.length > 0) {
+                const itemTotal = item.price * item.quantity;
+                const perPersonAmount = Math.floor(itemTotal / selectedUsers.length);
+                const remainder = itemTotal % selectedUsers.length;
+                
+                selectedUsers.forEach((userId, index) => {
+                    const finalAmount = perPersonAmount + (index < remainder ? 1 : 0);
+                    assignments[userId].total += finalAmount;
+                    assignments[userId].items.push({
+                        name: item.name,
+                        amount: finalAmount
+                    });
+                });
+            }
+        });
+        
+        return assignments;
+    }
+    
+    function populateModalContent(assignments) {
+        const splitBreakdown = document.getElementById('split-breakdown');
+        const totalAmountElement = document.getElementById('total-amount');
+        
+        let html = '';
+        let grandTotal = 0;
+        
+        Object.values(assignments).forEach(assignment => {
+            if (assignment.total > 0) {
+                grandTotal += assignment.total;
+                html += `
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold text-gray-800">${assignment.name}</span>
+                            <span class="text-lg font-bold text-primary">${assignment.total.toLocaleString()}원</span>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            ${assignment.items.map(item => `${item.name}: ${item.amount.toLocaleString()}원`).join(', ')}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        splitBreakdown.innerHTML = html || '<div class="text-gray-500 text-center py-4">선택된 항목이 없습니다.</div>';
+        totalAmountElement.textContent = grandTotal.toLocaleString() + '원';
+    }
+});
+</script>
+{% endblock %}
