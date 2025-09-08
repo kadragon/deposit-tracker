@@ -84,3 +84,27 @@ class ReceiptRepository:
             transactions.append(transaction)
         
         return transactions
+    
+    def find_pending_split_requests(self, user_id: str) -> List[dict]:
+        # Find receipts where user is a participant but no split transaction recorded yet
+        docs = self.db.collection("receipts").where("participants", "array-contains", user_id).get()
+        
+        pending_requests = []
+        for doc in docs:
+            receipt_data = doc.to_dict()
+            split_transactions = receipt_data.get("split_transactions", {})
+            
+            # Skip if user already has a split transaction recorded
+            if user_id in split_transactions:
+                continue
+                
+            request = {
+                "id": doc.id,
+                "store_name": receipt_data.get("store_name"),
+                "total_amount": receipt_data.get("total"),
+                "uploader_name": receipt_data.get("user_name"),
+                "created_at": receipt_data.get("created_at")
+            }
+            pending_requests.append(request)
+            
+        return pending_requests

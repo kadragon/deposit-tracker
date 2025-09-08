@@ -110,10 +110,14 @@ def create_app(
         receipt_repo = ReceiptRepository()
     if coupon_repo is None:
         coupon_repo = CouponRepository()
+    if store_repo is None:
+        # Initialize StoreRepository here for normal app operation when not injected by tests.
+        # This allows the app to run independently while maintaining testability.
+        from src.repositories.store_repository import StoreRepository
+        store_repo = StoreRepository()
     if ocr_service is None:
         ocr_service = OCRService()
-    # store_repo and coupon_service are expected to be injected by caller/tests.
-    # We avoid creating default Firestore-bound repos here to keep tests hermetic.
+    # coupon_service is expected to be injected by caller/tests, but create default if not provided.
     if coupon_service is None and (coupon_repo is not None and store_repo is not None):
         coupon_service = CouponService(coupon_repo, store_repo)
 
@@ -141,6 +145,9 @@ def create_app(
 
         receipts = receipt_repo.find_by_user_id(user_id)
         coupons = coupon_repo.get_by_user(user_id)
+        split_transactions = receipt_repo.find_split_transactions_by_user(user_id)
+        uploaded_receipts = receipt_repo.find_by_uploader(user_id)
+        pending_split_requests = receipt_repo.find_pending_split_requests(user_id)
 
         result = f"{_get_value(user, 'name')}{_get_value(user, 'deposit')}"
         for receipt in receipts:
@@ -152,6 +159,19 @@ def create_app(
             count = _get_value(coupon, 'count')
             goal = _get_value(coupon, 'goal')
             result += f"{store_name}{count}{goal}"
+        for transaction in split_transactions:
+            store_name = transaction.get('store_name', '')
+            user_amount = transaction.get('user_amount', 0)
+            result += f"{store_name}{user_amount}"
+        for uploaded in uploaded_receipts:
+            store_name = uploaded.get('store_name', '')
+            total_amount = uploaded.get('total_amount', 0)
+            result += f"{store_name}{total_amount}"
+        for pending in pending_split_requests:
+            store_name = pending.get('store_name', '')
+            total_amount = pending.get('total_amount', 0)
+            uploader_name = pending.get('uploader_name', '')
+            result += f"{store_name}{total_amount}{uploader_name}"
 
         return result
 

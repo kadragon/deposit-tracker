@@ -5,7 +5,14 @@ STORES_COLLECTION = "stores"
 
 
 class StoreRepository:
-    def __init__(self, firestore_client):
+    def __init__(self, firestore_client=None):
+        # Allow default construction for easier testing and flexibility.
+        # When firestore_client is None, initializes with real Firestore client.
+        # This enables dependency injection in tests while providing sensible defaults.
+        if firestore_client is None:
+            from google.cloud import firestore
+
+            firestore_client = firestore.Client()
         self.firestore_client = firestore_client
     
     def save(self, store: Store):
