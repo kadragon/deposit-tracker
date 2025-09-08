@@ -110,10 +110,12 @@ def create_app(
         receipt_repo = ReceiptRepository()
     if coupon_repo is None:
         coupon_repo = CouponRepository()
+    if store_repo is None:
+        from src.repositories.store_repository import StoreRepository
+        store_repo = StoreRepository()
     if ocr_service is None:
         ocr_service = OCRService()
-    # store_repo and coupon_service are expected to be injected by caller/tests.
-    # We avoid creating default Firestore-bound repos here to keep tests hermetic.
+    # coupon_service is expected to be injected by caller/tests, but create default if not provided.
     if coupon_service is None and (coupon_repo is not None and store_repo is not None):
         coupon_service = CouponService(coupon_repo, store_repo)
 

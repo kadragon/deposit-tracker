@@ -45,43 +45,80 @@
 
 ---
 
-## 🎯 다음 진행할 작업 (순서대로)
+## 🎯 **우선 진행할 작업 - UI 구현 (Phase 1)**
 
-### Phase 5: 분할 UI 완성 (핵심 기능) ✅
+### **🚨 현재 상황**: 백엔드 완료, 템플릿 없음
+- **백엔드 기능**: 100% 완료 (161개 테스트 통과)
+- **프론트엔드**: 0% (템플릿 파일 전혀 없음)
+- **현재 웹**: 텍스트만 출력 ("user-selection밥앨리스카드래곤")
 
-#### Test 14: Receipt Upload & Analysis ✅
-- [x] **should_display_items_for_user_assignment** - 물품별 사용자 배정 UI
+---
 
-#### Test 15: Item Assignment Interface ✅
-- [x] **should_display_all_users_for_item_assignment** - 전체 사용자 목록 표시
-- [x] **should_allow_assigning_items_to_users** - 물품을 사용자에게 배정
-- [x] **should_support_item_sharing_selection** - 물품 공유 선택 기능
-- [x] **should_show_real_time_amount_calculation** - 실시간 금액 계산
-- [x] **should_validate_all_items_assigned_before_submit** - 모든 물품 배정 검증
+### **Phase UI-1: 기본 템플릿 구조 생성**
 
-#### Test 16: Split Payment Confirmation ✅
-- [x] **should_display_per_user_payment_summary** - 사용자별 결제 요약
-- [x] **should_show_insufficient_balance_warnings** - 잔액 부족 경고
-- [x] **should_allow_payment_method_selection_per_user** - 사용자별 결제 방법 선택
-- [x] **should_process_multi_user_payment** - 다중 사용자 결제 처리
+#### Test UI-1: Base Template & User Selection
+- [ ] **should_render_base_template_with_tailwind** - 기본 Tailwind CSS 템플릿
+- [ ] **should_display_user_selection_form** - 사용자 선택 폼 UI
+- [ ] **should_render_user_cards_with_deposit_info** - 사용자 카드 + 예치금 표시
 
-### Phase 6: Admin Interface 보강
+#### Test UI-2: User Dashboard Template  
+- [ ] **should_render_user_dashboard_layout** - 사용자 대시보드 레이아웃
+- [ ] **should_display_current_balance_prominently** - 현재 잔액 강조 표시
+- [ ] **should_show_recent_transactions_list** - 최근 거래 내역 리스트
+- [ ] **should_render_upload_receipt_button** - 영수증 업로드 버튼
 
-#### Test 18: Admin User & Deposit Management (보강) ✅
-- [x] **should_show_detailed_deposit_history_per_user** - 사용자별 상세 예치금 내역
-- [x] **should_allow_bulk_deposit_addition** - 일괄 예치금 충전
+#### Test UI-3: Receipt Upload Interface
+- [ ] **should_render_file_upload_dropzone** - 파일 업로드 드래그앤드롭
+- [ ] **should_show_upload_progress_indicator** - 업로드 진행률 표시
+- [ ] **should_display_ocr_processing_spinner** - OCR 처리 스피너
+- [ ] **should_render_ocr_results_preview** - OCR 결과 미리보기
 
-#### Test 20: Admin Transaction History (보강) ✅
-- [x] **should_display_split_payment_details** - 분할 결제 상세 내역
-- [x] **should_show_receipt_uploader_vs_payers** - 업로더 vs 결제자 구분
-- [x] **should_export_detailed_financial_report** - 상세 재무 리포트 내보내기
+### **Phase UI-2: 분할 결제 인터페이스**
 
-### Phase 7: User Dashboard 보강
+#### Test UI-4: Item Assignment Interface
+- [ ] **should_render_items_list_with_checkboxes** - 물품 목록 + 체크박스
+- [ ] **should_display_user_avatars_for_assignment** - 사용자별 아바타 배정
+- [ ] **should_show_real_time_calculation_sidebar** - 실시간 계산 사이드바
+- [ ] **should_render_split_summary_modal** - 분할 요약 모달
 
-#### Test 21: User Dashboard (보강) ✅
-- [x] **should_show_split_payment_history** - 분할 결제 내역
-- [x] **should_display_receipts_uploaded_by_user** - 업로드한 영수증 목록
-- [x] **should_show_pending_split_requests** - 대기 중인 분할 요청
+#### Test UI-5: Payment Confirmation
+- [ ] **should_render_payment_summary_cards** - 결제 요약 카드들
+- [ ] **should_show_insufficient_balance_alerts** - 잔액 부족 경고
+- [ ] **should_render_payment_confirmation_flow** - 결제 확인 플로우
+
+### **Phase UI-3: 관리자 인터페이스**
+
+#### Test UI-6: Admin Dashboard
+- [ ] **should_render_admin_navigation_menu** - 관리자 네비게이션
+- [ ] **should_display_users_management_grid** - 사용자 관리 그리드
+- [ ] **should_render_deposit_management_forms** - 예치금 관리 폼
+- [ ] **should_show_transaction_history_table** - 거래 내역 테이블
+
+#### Test UI-7: Store Management  
+- [ ] **should_render_stores_list_with_actions** - 매장 목록 + 액션들
+- [ ] **should_display_coupon_settings_toggles** - 쿠폰 설정 토글
+- [ ] **should_render_store_analytics_charts** - 매장 분석 차트
+
+---
+
+## ✅ **완료된 백엔드 기능 (Phase 1-7)**
+
+### 핵심 도메인 & 서비스 Layer ✅
+- User/Store/Receipt/Coupon 모델 완료
+- 분할 결제 로직 완료 
+- OCR + LLM 파서 완료
+- Admin/User API 완료
+
+### Phase 5-7: UI 로직 (백엔드) ✅
+#### Test 14-16: 분할 UI 백엔드 ✅
+- [x] 물품별 사용자 배정 로직
+- [x] 실시간 금액 계산 
+- [x] 다중 사용자 결제 처리
+
+#### Test 18, 20-21: 대시보드 백엔드 ✅
+- [x] 관리자 사용자/예치금 관리
+- [x] 거래 내역 및 리포트 
+- [x] 사용자 대시보드 데이터
 
 ### Phase 8: Charts & Visualization
 
@@ -129,24 +166,32 @@
 
 ---
 
-## 🎯 현재 우선순위
+---
 
-**1순위 (MVP 핵심)**: Phase 5 - 분할 UI 완성
-- 물품별 사용자 배정 인터페이스
-- 실시간 금액 계산 및 분할 확인
-- 다중 사용자 결제 처리
+## 🎯 **현재 우선순위 - UI 구현**
 
-**2순위**: Phase 6-7 - 관리자/사용자 대시보드 보강
-- 상세 내역 조회 및 관리 기능
+**🚨 1순위 (긴급)**: Phase UI-1 - 기본 템플릿 구조
+- 사용자 선택 폼 (현재 텍스트만 출력됨)
+- 기본 대시보드 레이아웃
+- 영수증 업로드 UI
 
-**3순위**: Phase 8-10 - 차트/에러처리/배포
-- 분석 기능 및 안정성 확보
+**2순위**: Phase UI-2 - 분할 결제 인터페이스  
+- 물품 배정 UI (백엔드 완료)
+- 실시간 계산 UI
+
+**3순위**: Phase UI-3 - 관리자 인터페이스
+- 사용자 관리 UI (백엔드 완료)
 
 ---
 
-## 🚀 다음 작업 시작
+## 🚀 **다음 작업 시작**
 
-**"go" 명령어를 입력하면 Test 14: should_display_items_for_user_assignment 부터 시작합니다.**
+**"go" 명령어를 입력하면 Test UI-1: should_render_base_template_with_tailwind 부터 시작합니다.**
+
+### 📋 **UI 개발 접근법**
+1. **TDD 방식 유지**: 각 템플릿 기능별로 테스트 먼저 작성
+2. **Jinja2 + TailwindCSS**: 기존 기술 스택 활용
+3. **Progressive Enhancement**: 기본 HTML부터 시작하여 점진적 개선
 
 ## 💡 핵심 변경사항 요약
 - 개인별 영수증 → **공동 영수증 분할**
