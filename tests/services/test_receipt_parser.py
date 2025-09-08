@@ -1,7 +1,8 @@
 import pytest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from src.services.receipt_parser import ReceiptParser
 from src.services.ocr_service import OCRService
+from src.services.receipt_parser_interface import ParsedReceiptDTO
 from src.models.user import User
 from src.models.store import Store
 from src.models.receipt import Receipt
@@ -188,3 +189,74 @@ def test_should_create_receipt_items_ready_for_assignment():
     # Test per-user amount calculation
     user_amounts = americano.calculate_per_user_amounts()
     assert user_amounts[user] == 4500
+
+
+def test_should_parse_items_with_llm_for_korean_receipt():
+    # Given - Create a mock parser that mimics LLM parsing behavior
+    mock_parser = Mock()
+    mock_parser.parse.return_value = ParsedReceiptDTO(
+        store_name="스타벅스 코엑스점",
+        date="2024-09-08 12:34:56",
+        items=[
+            {"name": "아이스 아메리카노 (Tall)", "price": 4500, "quantity": 1},
+            {"name": "카페라떼 (Grande)", "price": 5800, "quantity": 1}, 
+            {"name": "초콜릿 케이크", "price": 6200, "quantity": 1},
+            {"name": "쿠키", "price": 3000, "quantity": 1}
+        ]
+    )
+    
+    # Create ReceiptParser with the mocked parser (this simulates LLM parser usage)
+    receipt_parser = ReceiptParser(parser=mock_parser)
+    
+    user = User(name="홍길동", deposit=50000)
+    
+    # Korean receipt OCR text with various formatting
+    korean_ocr_text = """
+    스타벅스 코엑스점
+    서울특별시 강남구 영동대로 513
+    TEL: 02-6002-8000
+    
+    2024/09/08(일) 12:34:56
+    영수증 번호: 1234-5678
+    
+    * 주문 내역 *
+    아이스 아메리카노 (Tall)    4,500원
+    카페라떼 (Grande)          5,800원
+    초콜릿 케이크               6,200원
+    쿠키                       3,000원
+    
+    ---------------------------
+    소계                      19,500원
+    할인                      -1,000원
+    ---------------------------
+    총 결제금액                18,500원
+    
+    카드결제                  18,500원
+    승인번호: 12345678
+    """
+    
+    # When
+    receipt = receipt_parser.create_receipt_from_ocr_result(user, korean_ocr_text)
+    
+    # Then
+    assert receipt is not None
+    assert receipt.store.name == "스타벅스 코엑스점"
+    assert len(receipt.items) == 4
+    
+    # Verify LLM parsed items correctly (ignoring meta lines like 소계, 할인, 총계)
+    items = receipt.items
+    assert items[0].name == "아이스 아메리카노 (Tall)"
+    assert items[0].price == 4500
+    assert items[1].name == "카페라떼 (Grande)"
+    assert items[1].price == 5800
+    assert items[2].name == "초콜릿 케이크"
+    assert items[2].price == 6200
+    assert items[3].name == "쿠키"
+    assert items[3].price == 3000
+    
+    # Should calculate correct total from items (not including discount)
+    total_from_items = sum(item.calculate_total() for item in items)
+    assert total_from_items == 19500  # Sum of individual items before discount
+    
+    # Verify the parser interface was called correctly
+    mock_parser.parse.assert_called_once_with(korean_ocr_text)

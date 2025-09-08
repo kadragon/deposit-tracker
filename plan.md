@@ -153,11 +153,11 @@
 
 테스트 추가(Phase 4 연계):
 
-- [ ] **should_parse_items_with_llm_for_korean_receipt**
-- [ ] **should_ignore_meta_lines_with_llm** (TEL/총계/할인 제외)
-- [ ] **should_return_valid_json_schema_from_llm**
-- [ ] **should_fallback_to_regex_when_llm_empty**
-- [ ] **should_extract_store_and_date_with_llm**
+- [x] **should_parse_items_with_llm_for_korean_receipt**
+- [x] **should_ignore_meta_lines_with_llm** (TEL/총계/할인 제외)
+- [x] **should_return_valid_json_schema_from_llm**
+- [x] **should_fallback_to_regex_when_llm_empty**
+- [x] **should_extract_store_and_date_with_llm**
 
 단계별 작업:
 
