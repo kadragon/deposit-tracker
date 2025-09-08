@@ -141,6 +141,9 @@ def create_app(
 
         receipts = receipt_repo.find_by_user_id(user_id)
         coupons = coupon_repo.get_by_user(user_id)
+        split_transactions = receipt_repo.find_split_transactions_by_user(user_id)
+        uploaded_receipts = receipt_repo.find_by_uploader(user_id)
+        pending_split_requests = receipt_repo.find_pending_split_requests(user_id)
 
         result = f"{_get_value(user, 'name')}{_get_value(user, 'deposit')}"
         for receipt in receipts:
@@ -152,6 +155,19 @@ def create_app(
             count = _get_value(coupon, 'count')
             goal = _get_value(coupon, 'goal')
             result += f"{store_name}{count}{goal}"
+        for transaction in split_transactions:
+            store_name = transaction.get('store_name', '')
+            user_amount = transaction.get('user_amount', 0)
+            result += f"{store_name}{user_amount}"
+        for uploaded in uploaded_receipts:
+            store_name = uploaded.get('store_name', '')
+            total_amount = uploaded.get('total_amount', 0)
+            result += f"{store_name}{total_amount}"
+        for pending in pending_split_requests:
+            store_name = pending.get('store_name', '')
+            total_amount = pending.get('total_amount', 0)
+            uploader_name = pending.get('uploader_name', '')
+            result += f"{store_name}{total_amount}{uploader_name}"
 
         return result
 

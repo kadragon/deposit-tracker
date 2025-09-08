@@ -78,10 +78,10 @@
 
 ### Phase 7: User Dashboard 보강
 
-#### Test 21: User Dashboard (보강)
-- [ ] **should_show_split_payment_history** - 분할 결제 내역
-- [ ] **should_display_receipts_uploaded_by_user** - 업로드한 영수증 목록
-- [ ] **should_show_pending_split_requests** - 대기 중인 분할 요청
+#### Test 21: User Dashboard (보강) ✅
+- [x] **should_show_split_payment_history** - 분할 결제 내역
+- [x] **should_display_receipts_uploaded_by_user** - 업로드한 영수증 목록
+- [x] **should_show_pending_split_requests** - 대기 중인 분할 요청
 
 ### Phase 8: Charts & Visualization
 
