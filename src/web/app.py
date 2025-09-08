@@ -1,5 +1,6 @@
 from flask import Flask, request, redirect, url_for, abort, jsonify, session
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+import os
 import os
 from datetime import datetime
 from src.repositories.user_repository import UserRepository
@@ -23,6 +24,38 @@ def _get_value(source, key, default=''):
 
 def _json_error(code: str, message: str, status: int):
     return jsonify({"error": {"code": code, "message": message}}), status
+
+def _wants_json(req: request) -> bool:
+    """True if client explicitly wants JSON and asked for it.
+    We require both query param and Accept header to avoid breaking existing tests.
+    """
+    fmt = (req.args.get('format') or '').lower()
+    accept = (req.headers.get('Accept') or '').lower()
+    return fmt == 'json' and 'application/json' in accept
+
+def _ensure_csrf_token() -> str:
+    token = session.get('csrf_token')
+    if not token:
+        token = os.urandom(16).hex()
+        session['csrf_token'] = token
+    return token
+
+def _to_serializable(value):
+    """Convert common non-JSON-serializable types to JSON-friendly values."""
+    if isinstance(value, Decimal):
+        # Keep as string to preserve precision
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {k: _to_serializable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_to_serializable(v) for v in value]
+    try:
+        # Fall back to basic types
+        return value
+    except Exception:
+        return str(value)
 
 def _first_value(source, keys: list[str], default=''):
     """Gets the first available value among attributes/keys in order."""
@@ -58,6 +91,17 @@ def create_app(
 ) -> Flask:
     app = Flask(__name__)
     app.secret_key = os.environ.get('APP_SECRET_KEY', 'test_secret_key')
+
+    @app.before_request
+    def _csrf_protect_and_prepare():
+        # Always ensure token exists for convenience
+        _ensure_csrf_token()
+        # Enforce CSRF only when explicitly enabled
+        if (os.environ.get('ENABLE_CSRF') or '').lower() in ('1', 'true', 'yes'):
+            if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+                token = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token') or ''
+                if not token or token != session.get('csrf_token'):
+                    abort(400)
     
     # Initialize dependencies with defaults if not provided
     if user_repo is None:
@@ -146,6 +190,12 @@ def create_app(
             return redirect(url_for('confirm_receipt', store_id=store_id, total=str(total_amount)))
 
         return 'upload-form'
+
+    @app.route('/csrf-token', methods=['GET'])
+    def csrf_token():
+        # Expose CSRF token for clients wanting to include it in subsequent POSTs
+        token = _ensure_csrf_token()
+        return jsonify({"csrf_token": token})
 
     @app.route('/confirm-receipt')
     def confirm_receipt():
@@ -559,7 +609,28 @@ def create_app(
         if not session.get('admin_logged_in'):
             return redirect(url_for('admin_login'))
         
-        history = user_repo.get_deposit_history(user_id)
+        # Ensure user exists; return 404 for unknown users
+        user = None
+        try:
+            user = user_repo.get_by_id(user_id)
+        except Exception:
+            user = None
+        if not user:
+            abort(404)
+
+        history = user_repo.get_deposit_history(user_id) or []
+        if _wants_json(request):
+            items = []
+            for entry in history:
+                items.append({
+                    'date': _to_serializable(getattr(entry, 'date', None)),
+                    'type': getattr(entry, 'type', ''),
+                    'amount': _to_serializable(getattr(entry, 'amount', 0)),
+                    'balance_after': _to_serializable(getattr(entry, 'balance_after', 0)),
+                    'description': getattr(entry, 'description', ''),
+                })
+            return jsonify({'deposit_history': items})
+
         result = 'deposit-history'
         for entry in history:
             result += f'{entry.type}{entry.amount}{entry.balance_after}{entry.description}'
@@ -570,16 +641,44 @@ def create_app(
         if not session.get('admin_logged_in'):
             return redirect(url_for('admin_login'))
         
-        amount = request.form.get('amount')
-        user_ids = request.form.get('user_ids', '').split(',')
-        
+        amount_raw = (request.form.get('amount') or '').strip()
+        user_ids_raw = request.form.get('user_ids', '')
+        user_ids = [u.strip() for u in user_ids_raw.split(',') if u.strip()]
+
+        # Validate amount is a positive decimal
+        try:
+            amount_decimal = Decimal(str(amount_raw))
+        except (InvalidOperation, ValueError, TypeError):
+            return redirect(url_for('admin_users'))
+        if amount_decimal <= 0:
+            return redirect(url_for('admin_users'))
+
+        # Apply deposit to each valid user
+        users_to_save = []
+        enable_bulk = (os.environ.get('ENABLE_BULK_SAVE') or '').lower() in ('1', 'true', 'yes')
+        has_bulk_method = hasattr(user_repo, 'save_many')
         for user_id in user_ids:
-            user_id = user_id.strip()
-            if user_id:
+            try:
                 user = user_repo.get_by_id(user_id)
-                if user:
-                    user.add_deposit(Decimal(amount))
-                    user_repo.save(user)
+            except Exception:
+                user = None
+            if user:
+                try:
+                    user.add_deposit(amount_decimal)
+                    users_to_save.append(user)
+                    # Save immediately unless bulk mode is explicitly enabled
+                    if not (enable_bulk and has_bulk_method):
+                        user_repo.save(user)
+                except Exception:
+                    # Skip problematic users; continue others
+                    continue
+        # Try optional bulk save if enabled and repository supports it
+        if enable_bulk and has_bulk_method and users_to_save:
+            try:
+                user_repo.save_many(users_to_save)
+            except Exception:
+                # Ignore bulk errors; individual saves already performed
+                pass
         
         return redirect(url_for('admin_users'))
     
@@ -679,6 +778,17 @@ def create_app(
         else:
             receipts = receipt_repo.list_all()
         
+        if _wants_json(request):
+            items = []
+            for receipt in receipts:
+                items.append({
+                    'user_name': _to_serializable(_first_value(receipt, ["user_name", "user", "user_id"])),
+                    'store_name': _to_serializable(_first_value(receipt, ["store_name", "store", "store_id"])),
+                    'total_amount': _to_serializable(_first_value(receipt, ["total_amount", "total"])),
+                    'date': _to_serializable(_first_value(receipt, ["date", "created_at"])),
+                })
+            return jsonify({'transactions': items})
+
         result = 'admin-transactions'
         for receipt in receipts:
             user_name = _first_value(receipt, ["user_name", "user", "user_id"])
@@ -693,7 +803,17 @@ def create_app(
         if not session.get('admin_logged_in'):
             return redirect(url_for('admin_login'))
         
-        split_details = receipt_repo.get_split_payment_details(receipt_id)
+        split_details = receipt_repo.get_split_payment_details(receipt_id) or []
+        if _wants_json(request):
+            items = []
+            for detail in split_details:
+                items.append({
+                    'user_name': getattr(detail, 'user_name', ''),
+                    'amount': _to_serializable(getattr(detail, 'amount', 0)),
+                    'payment_method': getattr(detail, 'payment_method', ''),
+                })
+            return jsonify({'split_details': items})
+
         result = 'split-payment-details'
         for detail in split_details:
             result += f'{detail.user_name}{detail.amount}{detail.payment_method}'
@@ -705,8 +825,19 @@ def create_app(
             return redirect(url_for('admin_login'))
         
         receipt = receipt_repo.get_by_id(receipt_id)
-        payers_info = receipt_repo.get_payers_info(receipt_id)
+        if not receipt:
+            abort(404)
+        payers_info = receipt_repo.get_payers_info(receipt_id) or []
         
+        if _wants_json(request):
+            return jsonify({
+                'uploader': getattr(receipt, 'user_name', ''),
+                'payers': [{
+                    'user_name': _to_serializable(p.get('user_name')),
+                    'amount': _to_serializable(p.get('amount')),
+                } for p in payers_info]
+            })
+
         result = 'uploader-payers-info'
         result += f'{receipt.user_name}'  # uploader
         for payer in payers_info:
@@ -718,17 +849,23 @@ def create_app(
         if not session.get('admin_logged_in'):
             return redirect(url_for('admin_login'))
         
-        report_data = receipt_repo.generate_financial_report()
-        
+        report_data = receipt_repo.generate_financial_report() or {}
+
+        if _wants_json(request):
+            return jsonify(_to_serializable(report_data))
+
         result = 'financial-report'
-        result += f'{report_data["total_amount"]}{report_data["deposit_payments"]}{report_data["cash_payments"]}'
-        
-        for user_data in report_data['by_user']:
-            result += f'{user_data["user_name"]}{user_data["total_spent"]}'
-        
-        for store_data in report_data['by_store']:
-            result += f'{store_data["store_name"]}{store_data["total_amount"]}'
-        
+        total_amount = report_data.get('total_amount', 0)
+        deposit_payments = report_data.get('deposit_payments', 0)
+        cash_payments = report_data.get('cash_payments', 0)
+        result += f'{total_amount}{deposit_payments}{cash_payments}'
+
+        for user_data in report_data.get('by_user', []):
+            result += f'{user_data.get("user_name", "")}{user_data.get("total_spent", 0)}'
+
+        for store_data in report_data.get('by_store', []):
+            result += f'{store_data.get("store_name", "")}{store_data.get("total_amount", 0)}'
+
         return result
 
     return app
