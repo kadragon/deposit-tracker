@@ -554,6 +554,35 @@ def create_app(
         user_repo.delete(user_id)
         return redirect(url_for('admin_users'))
     
+    @app.route('/admin/users/<user_id>/deposit-history', methods=['GET'])
+    def admin_user_deposit_history(user_id):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        history = user_repo.get_deposit_history(user_id)
+        result = 'deposit-history'
+        for entry in history:
+            result += f'{entry.type}{entry.amount}{entry.balance_after}{entry.description}'
+        return result
+    
+    @app.route('/admin/users/bulk-deposit', methods=['POST'])
+    def admin_bulk_deposit():
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        amount = request.form.get('amount')
+        user_ids = request.form.get('user_ids', '').split(',')
+        
+        for user_id in user_ids:
+            user_id = user_id.strip()
+            if user_id:
+                user = user_repo.get_by_id(user_id)
+                if user:
+                    user.add_deposit(Decimal(amount))
+                    user_repo.save(user)
+        
+        return redirect(url_for('admin_users'))
+    
     @app.route('/admin/stores', methods=['GET', 'POST'])
     def admin_stores():
         if not session.get('admin_logged_in'):
@@ -657,6 +686,49 @@ def create_app(
             total = _first_value(receipt, ["total_amount", "total"])
             date_val = _first_value(receipt, ["date", "created_at"])
             result += f'{user_name}{store_n}{total}{date_val}'
+        return result
+    
+    @app.route('/admin/transactions/<receipt_id>/split-details')
+    def admin_transaction_split_details(receipt_id):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        split_details = receipt_repo.get_split_payment_details(receipt_id)
+        result = 'split-payment-details'
+        for detail in split_details:
+            result += f'{detail.user_name}{detail.amount}{detail.payment_method}'
+        return result
+    
+    @app.route('/admin/transactions/<receipt_id>/uploader-vs-payers')
+    def admin_transaction_uploader_vs_payers(receipt_id):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        receipt = receipt_repo.get_by_id(receipt_id)
+        payers_info = receipt_repo.get_payers_info(receipt_id)
+        
+        result = 'uploader-payers-info'
+        result += f'{receipt.user_name}'  # uploader
+        for payer in payers_info:
+            result += f'{payer["user_name"]}{payer["amount"]}'
+        return result
+    
+    @app.route('/admin/transactions/financial-report')
+    def admin_financial_report():
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        
+        report_data = receipt_repo.generate_financial_report()
+        
+        result = 'financial-report'
+        result += f'{report_data["total_amount"]}{report_data["deposit_payments"]}{report_data["cash_payments"]}'
+        
+        for user_data in report_data['by_user']:
+            result += f'{user_data["user_name"]}{user_data["total_spent"]}'
+        
+        for store_data in report_data['by_store']:
+            result += f'{store_data["store_name"]}{store_data["total_amount"]}'
+        
         return result
 
     return app

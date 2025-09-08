@@ -67,14 +67,14 @@
 
 ### Phase 6: Admin Interface 보강
 
-#### Test 18: Admin User & Deposit Management (보강)
-- [ ] **should_show_detailed_deposit_history_per_user** - 사용자별 상세 예치금 내역
-- [ ] **should_allow_bulk_deposit_addition** - 일괄 예치금 충전
+#### Test 18: Admin User & Deposit Management (보강) ✅
+- [x] **should_show_detailed_deposit_history_per_user** - 사용자별 상세 예치금 내역
+- [x] **should_allow_bulk_deposit_addition** - 일괄 예치금 충전
 
-#### Test 20: Admin Transaction History (보강)
-- [ ] **should_display_split_payment_details** - 분할 결제 상세 내역
-- [ ] **should_show_receipt_uploader_vs_payers** - 업로더 vs 결제자 구분
-- [ ] **should_export_detailed_financial_report** - 상세 재무 리포트 내보내기
+#### Test 20: Admin Transaction History (보강) ✅
+- [x] **should_display_split_payment_details** - 분할 결제 상세 내역
+- [x] **should_show_receipt_uploader_vs_payers** - 업로더 vs 결제자 구분
+- [x] **should_export_detailed_financial_report** - 상세 재무 리포트 내보내기
 
 ### Phase 7: User Dashboard 보강
 
