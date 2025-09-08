@@ -100,17 +100,17 @@
 - [x] should_save_receipt_to_firestore
 - [x] should_retrieve_receipts_by_user
 - [x] should_retrieve_receipts_by_date_range
-- [ ] **should_save_receipt_with_user_assignments** (새로운 기능)
-- [ ] **should_retrieve_receipts_by_uploader** (새로운 기능)
-- [ ] **should_retrieve_split_transactions_by_user** (새로운 기능)
+- [x] **should_save_receipt_with_user_assignments** (새로운 기능)
+- [x] **should_retrieve_receipts_by_uploader** (새로운 기능)
+- [x] **should_retrieve_split_transactions_by_user** (새로운 기능)
 
 #### Test 10: Coupon System - 실제 결제자 기준
 
 - [x] should_create_coupon_for_user_and_store
 - [x] should_increment_coupon_count
 - [x] should_check_if_coupon_goal_reached
-- [ ] **should_award_coupon_only_to_actual_payers** (수정된 로직)
-- [ ] **should_not_award_coupon_for_zero_amount_users** (새로운 검증)
+- [x] **should_award_coupon_only_to_actual_payers** (수정된 로직)
+- [x] **should_not_award_coupon_for_zero_amount_users** (새로운 검증)
 
 #### Test 11: Coupon Service & Repository
 
@@ -135,7 +135,7 @@
 - [x] should_create_receipt_from_ocr_result
 - [x] should_handle_missing_store_in_ocr
 - [x] should_handle_invalid_price_format
-- [ ] **should_create_receipt_items_ready_for_assignment** (새로운 기능)
+- [x] **should_create_receipt_items_ready_for_assignment** (새로운 기능)
 
 #### LLM 기반 파서 도입 계획 (OpenAI gpt-5-mini)
 
