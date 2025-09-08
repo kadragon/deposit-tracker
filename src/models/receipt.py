@@ -11,6 +11,8 @@ class Receipt:
         self.store = store
         self.items: List[ReceiptItem] = []
         self.purchase_date = purchase_date
+        self.participants: List['User'] = []
+        self.uploader = user
 
     def add_item(self, name: str, price: Any, quantity: int) -> None:
         """Add an item by creating a ReceiptItem."""
@@ -20,6 +22,10 @@ class Receipt:
     def add_receipt_item(self, item: ReceiptItem) -> None:
         """Append a ReceiptItem object."""
         self.items.append(item)
+
+    def add_participant(self, user: 'User') -> None:
+        """Add a participant to the receipt."""
+        self.participants.append(user)
 
     def calculate_total(self) -> Decimal:
         """Calculates total amount from all receipt items."""
