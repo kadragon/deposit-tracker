@@ -153,7 +153,7 @@ def test_should_return_valid_json_schema_from_llm(mock_openai_client):
 
 
 @patch('src.services.llm_receipt_parser.OpenAI')
-def test_should_fallback_to_regex_when_llm_empty(mock_openai_client):
+def test_should_handle_empty_llm_response(mock_openai_client):
     # Given
     empty_response = Mock()
     empty_response.choices = [Mock()]

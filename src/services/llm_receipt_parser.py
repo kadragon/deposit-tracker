@@ -1,6 +1,8 @@
 import json
+import logging
 import os
 import time
+from functools import lru_cache
 from typing import List, Dict, Optional
 from openai import OpenAI
 from .receipt_parser_interface import ReceiptParserInterface, ParsedReceiptDTO
@@ -40,6 +42,7 @@ class LLMReceiptParser(ReceiptParserInterface):
             items=result.get("items", [])
         )
         
+    @lru_cache(maxsize=128)
     def parse_receipt(self, ocr_text: str) -> Dict:
         """Parse OCR text using LLM to extract structured receipt data.
         
@@ -97,7 +100,8 @@ Example output:
                 # If JSON parsing fails, return empty result
                 return {"store": None, "date": None, "items": []}
                 
-        except Exception:
+        except Exception as e:
+            logging.error(f"LLM parsing failed: {e}")
             # On any error, return empty result
             return {"store": None, "date": None, "items": []}
     

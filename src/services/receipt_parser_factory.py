@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Optional
 from .receipt_parser_interface import ReceiptParserInterface
@@ -36,7 +37,8 @@ class ReceiptParserFactory:
         if use_llm and api_key:
             try:
                 return LLMReceiptParser(api_key=api_key, model=llm_model)
-            except Exception:
+            except Exception as e:
+                logging.warning(f"LLM parser initialization failed: {e}. Falling back to regex parser.")
                 # Fallback to regex parser if LLM initialization fails
                 pass
                 
@@ -105,7 +107,8 @@ class FallbackReceiptParser(ReceiptParserInterface):
                 not result.items):
                 return self.fallback.parse(ocr_text)
             return result
-        except Exception:
+        except Exception as e:
+            logging.warning(f"Primary parser failed: {e}. Falling back.")
             # On any error with primary parser, use fallback
             return self.fallback.parse(ocr_text)
     

@@ -1,7 +1,8 @@
 import pytest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from src.services.receipt_parser import ReceiptParser
 from src.services.ocr_service import OCRService
+from src.services.receipt_parser_interface import ParsedReceiptDTO
 from src.models.user import User
 from src.models.store import Store
 from src.models.receipt import Receipt
@@ -191,9 +192,21 @@ def test_should_create_receipt_items_ready_for_assignment():
 
 
 def test_should_parse_items_with_llm_for_korean_receipt():
-    # Given
-    ocr_service_mock = Mock(spec=OCRService)
-    receipt_parser = ReceiptParser(ocr_service_mock)
+    # Given - Create a mock parser that mimics LLM parsing behavior
+    mock_parser = Mock()
+    mock_parser.parse.return_value = ParsedReceiptDTO(
+        store_name="스타벅스 코엑스점",
+        date="2024-09-08 12:34:56",
+        items=[
+            {"name": "아이스 아메리카노 (Tall)", "price": 4500, "quantity": 1},
+            {"name": "카페라떼 (Grande)", "price": 5800, "quantity": 1}, 
+            {"name": "초콜릿 케이크", "price": 6200, "quantity": 1},
+            {"name": "쿠키", "price": 3000, "quantity": 1}
+        ]
+    )
+    
+    # Create ReceiptParser with the mocked parser (this simulates LLM parser usage)
+    receipt_parser = ReceiptParser(parser=mock_parser)
     
     user = User(name="홍길동", deposit=50000)
     
@@ -222,16 +235,6 @@ def test_should_parse_items_with_llm_for_korean_receipt():
     승인번호: 12345678
     """
     
-    # Mock LLM-based parsing - this should return structured data
-    ocr_service_mock.parse_store_name.return_value = "스타벅스 코엑스점"
-    ocr_service_mock.parse_items_and_prices.return_value = [
-        {"name": "아이스 아메리카노 (Tall)", "price": 4500, "quantity": 1},
-        {"name": "카페라떼 (Grande)", "price": 5800, "quantity": 1}, 
-        {"name": "초콜릿 케이크", "price": 6200, "quantity": 1},
-        {"name": "쿠키", "price": 3000, "quantity": 1}
-    ]
-    ocr_service_mock.parse_date.return_value = "2024-09-08 12:34:56"
-    
     # When
     receipt = receipt_parser.create_receipt_from_ocr_result(user, korean_ocr_text)
     
@@ -255,7 +258,5 @@ def test_should_parse_items_with_llm_for_korean_receipt():
     total_from_items = sum(item.calculate_total() for item in items)
     assert total_from_items == 19500  # Sum of individual items before discount
     
-    # Verify OCR service was called with raw text
-    ocr_service_mock.parse_store_name.assert_called_once_with(korean_ocr_text)
-    ocr_service_mock.parse_items_and_prices.assert_called_once_with(korean_ocr_text)
-    ocr_service_mock.parse_date.assert_called_once_with(korean_ocr_text)
+    # Verify the parser interface was called correctly
+    mock_parser.parse.assert_called_once_with(korean_ocr_text)
