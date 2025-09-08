@@ -43,3 +43,33 @@ def test_should_calculate_total_amount():
     total = receipt.calculate_total()
     
     assert total == 11500
+
+
+def test_should_support_multiple_users_per_receipt():
+    uploader = User(name="업로더", deposit=25000)
+    participant1 = User(name="참여자1", deposit=20000)
+    participant2 = User(name="참여자2", deposit=15000)
+    store = Store(name="카페")
+    
+    receipt = Receipt(user=uploader, store=store)
+    receipt.add_participant(participant1)
+    receipt.add_participant(participant2)
+    
+    assert len(receipt.participants) == 2
+    assert participant1 in receipt.participants
+    assert participant2 in receipt.participants
+    assert receipt.uploader == uploader
+
+
+def test_should_track_who_uploaded_receipt():
+    uploader = User(name="김영희", deposit=30000)
+    participant = User(name="박철수", deposit=20000)
+    store = Store(name="맥도날드")
+    
+    receipt = Receipt(user=uploader, store=store)
+    receipt.add_participant(participant)
+    
+    assert receipt.uploader == uploader
+    assert receipt.uploader.name == "김영희"
+    assert receipt.user == uploader  # backward compatibility
+    assert receipt.uploader != participant

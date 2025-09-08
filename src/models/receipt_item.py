@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List, Any, Dict
 from decimal import Decimal
 
 
@@ -13,6 +13,25 @@ class ReceiptItem:
         self.name: str = name
         self.price: Decimal = price_decimal
         self.quantity: int = quantity
+        self.assigned_users: List[Any] = []
 
     def calculate_total(self) -> Decimal:
         return self.price * int(self.quantity)
+
+    def assign_to_user(self, user: Any) -> None:
+        """Assign this item to a specific user."""
+        self.assigned_users.append(user)
+
+    def is_shared(self) -> bool:
+        """Check if this item is shared between multiple users."""
+        return len(self.assigned_users) > 1
+
+    def calculate_per_user_amounts(self) -> Dict[Any, Decimal]:
+        """Calculate the amount each assigned user should pay for this item."""
+        if not self.assigned_users:
+            return {}
+        
+        total = self.calculate_total()
+        per_user_amount = total / len(self.assigned_users)
+        
+        return {user: per_user_amount for user in self.assigned_users}
