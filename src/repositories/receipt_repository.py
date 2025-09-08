@@ -57,3 +57,30 @@ class ReceiptRepository:
     def find_by_store_name(self, store_name: str) -> List[dict]:
         docs = self.db.collection("receipts").where("store_name", "==", store_name).get()
         return [self._doc_to_dict(doc) for doc in docs]
+    
+    def find_by_uploader(self, uploader_id: str) -> List[dict]:
+        docs = self.db.collection("receipts").where("user_id", "==", uploader_id).get()
+        return [self._doc_to_dict(doc) for doc in docs]
+    
+    def find_split_transactions_by_user(self, user_id: str) -> List[dict]:
+        # Query for receipts where the user has a split transaction
+        docs = self.db.collection("receipts").where(f"split_transactions.{user_id}", ">=", "").get()
+        
+        transactions = []
+        for doc in docs:
+            receipt_data = doc.to_dict()
+            # The query on line 67 already ensures user_id is in split_transactions,
+            # so the conditional check is not necessary.
+            split_transactions = receipt_data.get("split_transactions", {})
+
+            transaction = {
+                "receipt_id": doc.id,
+                "user_amount": split_transactions[user_id],
+                "total_amount": receipt_data.get("total"),
+                "store_id": receipt_data.get("store_id"),
+                "store_name": receipt_data.get("store_name"),
+                "created_at": receipt_data.get("created_at")
+            }
+            transactions.append(transaction)
+        
+        return transactions

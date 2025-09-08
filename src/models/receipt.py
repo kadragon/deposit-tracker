@@ -67,11 +67,17 @@ class Receipt:
             "user_id": uid,
             "store_id": sid,
             "items": [
-                {"name": i.name, "price": str(i.price), "quantity": i.quantity}
+                {
+                    "name": i.name, 
+                    "price": str(i.price), 
+                    "quantity": i.quantity,
+                    "assigned_users": [getattr(user, "id", None) for user in i.assigned_users]
+                }
                 for i in self.items
             ],
             "total": str(self.calculate_total()),
             "purchase_date": self.purchase_date,
+            "participants": [getattr(participant, "id", None) for participant in self.participants],
         }
         if created_at is not None:
             data["created_at"] = created_at
