@@ -1,7 +1,6 @@
 from flask import Flask, request, redirect, url_for, abort, jsonify, session, render_template
 from decimal import Decimal, InvalidOperation
 import os
-import os
 from datetime import datetime
 from src.repositories.user_repository import UserRepository
 from src.repositories.receipt_repository import ReceiptRepository
@@ -526,13 +525,6 @@ def create_app(
             result['partial_success'] = True
         
         return jsonify(result), 200 if not failed_payments else 207
-        
-        response_data = {
-            'message': 'multi-user-payment-success',
-            'processed_users': processed_users
-        }
-        
-        return jsonify(response_data)
 
     @app.route('/process-receipt', methods=['POST'])
     def process_receipt():
@@ -821,9 +813,13 @@ def create_app(
         elif store_name:
             receipts = receipt_repo.find_by_store_name(store_name)
         elif start_date and end_date:
-            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-            receipts = receipt_repo.find_by_date_range(start_dt, end_dt)
+            try:
+                start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+                receipts = receipt_repo.find_by_date_range(start_dt, end_dt)
+            except ValueError:
+                # Invalid date format; fall back to empty or all data
+                receipts = []
         else:
             receipts = receipt_repo.list_all()
         
