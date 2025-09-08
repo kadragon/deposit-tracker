@@ -69,17 +69,18 @@ class ReceiptRepository:
         transactions = []
         for doc in docs:
             receipt_data = doc.to_dict()
+            # The query on line 67 already ensures user_id is in split_transactions,
+            # so the conditional check is not necessary.
             split_transactions = receipt_data.get("split_transactions", {})
-            
-            if user_id in split_transactions:
-                transaction = {
-                    "receipt_id": doc.id,
-                    "user_amount": split_transactions[user_id],
-                    "total_amount": receipt_data.get("total"),
-                    "store_id": receipt_data.get("store_id"),
-                    "store_name": receipt_data.get("store_name"),
-                    "created_at": receipt_data.get("created_at")
-                }
-                transactions.append(transaction)
+
+            transaction = {
+                "receipt_id": doc.id,
+                "user_amount": split_transactions[user_id],
+                "total_amount": receipt_data.get("total"),
+                "store_id": receipt_data.get("store_id"),
+                "store_name": receipt_data.get("store_name"),
+                "created_at": receipt_data.get("created_at")
+            }
+            transactions.append(transaction)
         
         return transactions

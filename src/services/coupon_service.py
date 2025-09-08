@@ -19,9 +19,11 @@ class CouponService:
         # Only award coupons to users with non-zero payment amounts
         for user_id, amount_str in split_transactions.items():
             # Convert string amount to number for comparison
-            amount = float(amount_str) if amount_str else 0
-            if amount > 0:
-                self.coupon_repository.increment(user_id, store_id, store.coupon_goal)
+            try:
+                if float(amount_str) > 0:
+                    self.coupon_repository.increment(user_id, store_id, store.coupon_goal)
+            except (ValueError, TypeError):
+                pass
 
     # Backward-compatible alias used by some callers/tests
     def award_coupon(self, user_id: str, store_id: str):
