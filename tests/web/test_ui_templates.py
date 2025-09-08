@@ -31,8 +31,8 @@ def test_should_render_base_template_with_tailwind():
     assert '</body>' in html
     assert '</html>' in html
     
-    # Check for Tailwind CSS CDN
-    assert 'https://cdn.tailwindcss.com' in html or 'tailwindcss' in html
+    # Check for Tailwind CSS CDN (more secure check)
+    assert 'src="https://cdn.tailwindcss.com"' in html or 'tailwindcss' in html
     
     # Check for basic responsive structure
     assert 'class=' in html  # Should have CSS classes

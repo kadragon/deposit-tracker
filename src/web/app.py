@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, url_for, abort, jsonify, session, render_template
+from flask import Flask, request, redirect, url_for, abort, jsonify, session, render_template, flash
 from decimal import Decimal, InvalidOperation
 import os
 from datetime import datetime
@@ -119,6 +119,16 @@ def create_app(
     # coupon_service is expected to be injected by caller/tests, but create default if not provided.
     if coupon_service is None and (coupon_repo is not None and store_repo is not None):
         coupon_service = CouponService(coupon_repo, store_repo)
+
+    # Add custom Jinja2 filters
+    def format_currency(value):
+        """Format currency with commas"""
+        try:
+            return f"{int(value):,}"
+        except (ValueError, TypeError):
+            return str(value)
+    
+    app.jinja_env.filters['currency'] = format_currency
 
     @app.route('/', methods=['GET', 'POST'])
     def user_selection():
@@ -819,6 +829,7 @@ def create_app(
                 receipts = receipt_repo.find_by_date_range(start_dt, end_dt)
             except ValueError:
                 # Invalid date format; fall back to empty or all data
+                flash('잘못된 날짜 형식입니다. YYYY-MM-DD 형식으로 입력해주세요.', 'error')
                 receipts = []
         else:
             receipts = receipt_repo.list_all()

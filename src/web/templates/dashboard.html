@@ -15,7 +15,7 @@
 
     <!-- Upload Receipt Button -->
     <div class="text-center">
-        <a href="/upload" class="inline-block bg-secondary text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors">
+        <a href="{{ url_for('upload_form') }}" class="inline-block bg-secondary text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors">
             📷 영수증 업로드
         </a>
     </div>
@@ -97,7 +97,7 @@
 
     <!-- Navigation -->
     <div class="text-center space-x-4">
-        <a href="/" class="text-gray-600 hover:text-gray-800">← 사용자 선택</a>
+        <a href="{{ url_for('user_selection') }}" class="text-gray-600 hover:text-gray-800">← 사용자 선택</a>
     </div>
 </div>
 {% endblock %}

@@ -26,12 +26,12 @@
                         <div class="flex-1">
                             <h3 class="text-lg font-semibold text-gray-800">{{ item.name }}</h3>
                             <div class="text-sm text-gray-600">
-                                {{ "{:,}".format(item.price) }}원
+                                {{ item.price|currency }}원
                                 {% if item.quantity > 1 %} × {{ item.quantity }}개{% endif %}
                             </div>
                         </div>
                         <div class="text-xl font-bold text-primary">
-                            {{ "{:,}".format(item.price * item.quantity) }}원
+                            {{ (item.price * item.quantity)|currency }}원
                         </div>
                     </div>
                     
@@ -163,12 +163,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (selectedUsers.length > 0) {
                 const itemTotal = item.price * item.quantity;
                 const perPersonAmount = Math.floor(itemTotal / selectedUsers.length);
+                const remainder = itemTotal % selectedUsers.length;
                 
-                selectedUsers.forEach(userId => {
-                    assignments[userId].total += perPersonAmount;
+                selectedUsers.forEach((userId, index) => {
+                    const finalAmount = perPersonAmount + (index < remainder ? 1 : 0);
+                    assignments[userId].total += finalAmount;
                     assignments[userId].items.push({
                         name: item.name,
-                        amount: perPersonAmount
+                        amount: finalAmount
                     });
                 });
             }
@@ -235,12 +237,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (selectedUsers.length > 0) {
                 const itemTotal = item.price * item.quantity;
                 const perPersonAmount = Math.floor(itemTotal / selectedUsers.length);
+                const remainder = itemTotal % selectedUsers.length;
                 
-                selectedUsers.forEach(userId => {
-                    assignments[userId].total += perPersonAmount;
+                selectedUsers.forEach((userId, index) => {
+                    const finalAmount = perPersonAmount + (index < remainder ? 1 : 0);
+                    assignments[userId].total += finalAmount;
                     assignments[userId].items.push({
                         name: item.name,
-                        amount: perPersonAmount
+                        amount: finalAmount
                     });
                 });
             }
