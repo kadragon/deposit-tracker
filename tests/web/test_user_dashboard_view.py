@@ -18,7 +18,9 @@ def test_should_display_user_deposit_balance():
     mock_coupon_repo = Mock()
     mock_coupon_repo.get_by_user.return_value = []
     
-    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo)
+    mock_store_repo = Mock()
+    
+    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo, store_repo=mock_store_repo)
     client = app.test_client()
     response = client.get('/dashboard/user123')
     
@@ -43,7 +45,9 @@ def test_should_display_recent_transactions():
     mock_coupon_repo = Mock()
     mock_coupon_repo.get_by_user.return_value = []
     
-    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo)
+    mock_store_repo = Mock()
+    
+    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo, store_repo=mock_store_repo)
     client = app.test_client()
     response = client.get('/dashboard/user123')
     
@@ -68,7 +72,9 @@ def test_should_display_coupon_progress():
     mock_coupon = Mock(store_name="테스트 매장", count=3, goal=5)
     mock_coupon_repo.get_by_user.return_value = [mock_coupon]
     
-    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo)
+    mock_store_repo = Mock()
+    
+    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo, store_repo=mock_store_repo)
     client = app.test_client()
     response = client.get('/dashboard/user123')
     
@@ -85,8 +91,9 @@ def test_should_return_404_for_invalid_user():
     
     mock_receipt_repo = Mock()
     mock_coupon_repo = Mock()
+    mock_store_repo = Mock()
     
-    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo)
+    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo, store_repo=mock_store_repo)
     client = app.test_client()
     response = client.get('/dashboard/nonexistent')
     
@@ -123,7 +130,9 @@ def test_should_show_split_payment_history():
     mock_coupon_repo = Mock()
     mock_coupon_repo.get_by_user.return_value = []
     
-    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo)
+    mock_store_repo = Mock()
+    
+    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo, store_repo=mock_store_repo)
     client = app.test_client()
     response = client.get('/dashboard/user123')
     
@@ -164,7 +173,9 @@ def test_should_display_receipts_uploaded_by_user():
     mock_coupon_repo = Mock()
     mock_coupon_repo.get_by_user.return_value = []
     
-    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo)
+    mock_store_repo = Mock()
+    
+    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo, store_repo=mock_store_repo)
     client = app.test_client()
     response = client.get('/dashboard/user123')
     
@@ -207,7 +218,9 @@ def test_should_show_pending_split_requests():
     mock_coupon_repo = Mock()
     mock_coupon_repo.get_by_user.return_value = []
     
-    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo)
+    mock_store_repo = Mock()
+    
+    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, coupon_repo=mock_coupon_repo, store_repo=mock_store_repo)
     client = app.test_client()
     response = client.get('/dashboard/user123')
     

@@ -9,10 +9,11 @@ def test_should_display_user_selection_page():
     mock_user_repo.list_all.return_value = []
     mock_receipt_repo = Mock()
     mock_coupon_repo = Mock()
+    mock_store_repo = Mock()
     mock_ocr_service = Mock()
     
     app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, 
-                     coupon_repo=mock_coupon_repo, ocr_service=mock_ocr_service)
+                     coupon_repo=mock_coupon_repo, store_repo=mock_store_repo, ocr_service=mock_ocr_service)
     client = app.test_client()
     response = client.get('/')
     
@@ -28,10 +29,11 @@ def test_should_list_all_available_users():
     ]
     mock_receipt_repo = Mock()
     mock_coupon_repo = Mock()
+    mock_store_repo = Mock()
     mock_ocr_service = Mock()
     
     app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, 
-                     coupon_repo=mock_coupon_repo, ocr_service=mock_ocr_service)
+                     coupon_repo=mock_coupon_repo, store_repo=mock_store_repo, ocr_service=mock_ocr_service)
     client = app.test_client()
     response = client.get('/')
     
@@ -46,10 +48,11 @@ def test_should_redirect_to_dashboard_when_user_selected():
     mock_user_repo.list_all.return_value = []
     mock_receipt_repo = Mock()
     mock_coupon_repo = Mock()
+    mock_store_repo = Mock()
     mock_ocr_service = Mock()
     
     app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, 
-                     coupon_repo=mock_coupon_repo, ocr_service=mock_ocr_service)
+                     coupon_repo=mock_coupon_repo, store_repo=mock_store_repo, ocr_service=mock_ocr_service)
     client = app.test_client()
     response = client.post('/', data={'user_id': 'user123'})
     

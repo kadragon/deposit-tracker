@@ -111,6 +111,8 @@ def create_app(
     if coupon_repo is None:
         coupon_repo = CouponRepository()
     if store_repo is None:
+        # Initialize StoreRepository here for normal app operation when not injected by tests.
+        # This allows the app to run independently while maintaining testability.
         from src.repositories.store_repository import StoreRepository
         store_repo = StoreRepository()
     if ocr_service is None:

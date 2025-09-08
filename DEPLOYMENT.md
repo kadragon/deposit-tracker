@@ -38,6 +38,12 @@ dependencies = [
 
 `.env` 파일 생성 (`.env.example` 참조):
 
+> ⚠️ **보안 중요**: 아래는 예제값입니다. 프로덕션 환경에서는 반드시 강력하고 고유한 값을 생성하여 사용하세요!
+> 
+> - `SECRET_KEY`, `APP_SECRET_KEY`: `openssl rand -hex 32`로 생성
+> - `ADMIN_PASSWORD`: `openssl rand -base64 20`로 생성  
+> - 모든 credential은 버전 관리에 포함하지 마세요!
+
 ```bash
 # 🔑 Google Cloud 설정 (필수)
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json

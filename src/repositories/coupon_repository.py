@@ -6,7 +6,9 @@ COUPONS_COLLECTION = "coupons"
 
 class CouponRepository:
     def __init__(self, firestore_client=None):
-        # Allow default construction; fall back to real client if not provided
+        # Allow default construction for easier testing and flexibility.
+        # When firestore_client is None, initializes with real Firestore client.
+        # This enables dependency injection in tests while providing sensible defaults.
         if firestore_client is None:
             from google.cloud import firestore
 
