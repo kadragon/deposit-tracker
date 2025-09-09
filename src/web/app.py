@@ -188,10 +188,7 @@ def create_app(
                 return _json_error('store_not_found', 'Store not found', 404)
 
             # Persist parsed data in session for follow-up steps
-            try:
-                session['parsed_items'] = items or []
-            except Exception:
-                session['parsed_items'] = []
+            session['parsed_items'] = items or []
 
             # Compute total from parsed items (fallback to 0)
             try:
@@ -494,13 +491,10 @@ def create_app(
         session['payment_methods'] = user_payments
         session['payment_store_id'] = store_id
         # Additionally keep a dict form for confirmation view compatibility
-        try:
-            confirmed = {p.get('user_id'): {'amount': p.get('amount', 0), 'method': p.get('method', 'deposit')}
-                         for p in (user_payments or []) if p.get('user_id')}
-            session['confirmed_payments'] = confirmed
-            session['assignment_store_id'] = store_id or session.get('assignment_store_id', '')
-        except Exception:
-            pass
+        confirmed = {p.get('user_id'): {'amount': p.get('amount', 0), 'method': p.get('method', 'deposit')}
+                     for p in (user_payments or []) if p.get('user_id')}
+        session['confirmed_payments'] = confirmed
+        session['assignment_store_id'] = store_id or session.get('assignment_store_id', '')
         
         response_data = {
             'message': 'payment-methods-selected',
@@ -693,8 +687,10 @@ def create_app(
         try:
             amount_dec = Decimal(str(amount_raw))
         except (InvalidOperation, ValueError, TypeError):
+            flash('유효하지 않은 금액 형식입니다.', 'error')
             return redirect(url_for('admin_users'))
         if amount_dec <= 0:
+            flash('금액은 0보다 커야 합니다.', 'error')
             return redirect(url_for('admin_users'))
         user = user_repo.get_by_id(user_id)
         if user:
@@ -825,7 +821,17 @@ def create_app(
         
         # Display all stores
         stores = store_repo.list_all()
-        return render_template('admin_stores.html', stores=stores)
+        # Convert store objects to dictionaries for JSON serialization in template
+        stores_data = []
+        for store in stores:
+            store_dict = {
+                'id': _get_value(store, 'id'),
+                'name': _get_value(store, 'name'),
+                'coupon_enabled': _get_value(store, 'coupon_enabled'),
+                'coupon_goal': _get_value(store, 'coupon_goal')
+            }
+            stores_data.append(store_dict)
+        return render_template('admin_stores.html', stores=stores_data)
     
     @app.route('/admin/stores/<store_id>/toggle-coupon', methods=['POST'])
     def admin_toggle_coupon(store_id):
