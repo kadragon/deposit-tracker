@@ -171,7 +171,8 @@ def create_app(
             if file.filename == '':
                 return _json_error('no_file_selected', 'No file selected', 400)
 
-            text = ocr_service.extract_text_from_image(file.read())
+            content_bytes = file.read()
+            text = ocr_service.extract_text_from_image(content_bytes)
             store_name = ocr_service.parse_store_name(text)
             items = ocr_service.parse_items_and_prices(text)
 
@@ -186,6 +187,12 @@ def create_app(
             if not store_id:
                 return _json_error('store_not_found', 'Store not found', 404)
 
+            # Persist parsed data in session for follow-up steps
+            try:
+                session['parsed_items'] = items or []
+            except Exception:
+                session['parsed_items'] = []
+
             # Compute total from parsed items (fallback to 0)
             try:
                 total_amount = sum(int(i.get('price', 0)) for i in items)
@@ -193,6 +200,7 @@ def create_app(
                 total_amount = 0
 
             # Redirect to confirmation with canonical identifiers
+            session['assignment_store_id'] = store_id
             return redirect(url_for('confirm_receipt', store_id=store_id, total=str(total_amount)))
 
         return render_template('upload.html')
@@ -322,9 +330,11 @@ def create_app(
                         user_amounts[user_id] = user_amounts.get(user_id, 0) + user_amount
                 else:
                     # Equal sharing if no ratio provided
-                    per_user_amount = item_total // len(shared_users)
-                    for user_id in shared_users:
-                        user_amounts[user_id] = user_amounts.get(user_id, 0) + per_user_amount
+                    if shared_users:
+                        per_user_amount = item_total // len(shared_users)
+                        for user_id in shared_users:
+                            user_amounts[user_id] = user_amounts.get(user_id, 0) + per_user_amount
+                    # If no shared_users provided, skip this assignment entry
             else:
                 # Individual assignment
                 user_id = assignment.get('user_id')
@@ -483,6 +493,14 @@ def create_app(
         # Store payment method selections in session
         session['payment_methods'] = user_payments
         session['payment_store_id'] = store_id
+        # Additionally keep a dict form for confirmation view compatibility
+        try:
+            confirmed = {p.get('user_id'): {'amount': p.get('amount', 0), 'method': p.get('method', 'deposit')}
+                         for p in (user_payments or []) if p.get('user_id')}
+            session['confirmed_payments'] = confirmed
+            session['assignment_store_id'] = store_id or session.get('assignment_store_id', '')
+        except Exception:
+            pass
         
         response_data = {
             'message': 'payment-methods-selected',
@@ -671,10 +689,16 @@ def create_app(
         if not session.get('admin_logged_in'):
             return redirect(url_for('admin_login'))
         
-        amount = request.form.get('amount')
+        amount_raw = request.form.get('amount')
+        try:
+            amount_dec = Decimal(str(amount_raw))
+        except (InvalidOperation, ValueError, TypeError):
+            return redirect(url_for('admin_users'))
+        if amount_dec <= 0:
+            return redirect(url_for('admin_users'))
         user = user_repo.get_by_id(user_id)
         if user:
-            user.add_deposit(Decimal(amount))
+            user.add_deposit(amount_dec)
             user_repo.save(user)
         return redirect(url_for('admin_users'))
     
