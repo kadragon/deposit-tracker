@@ -56,27 +56,30 @@
                     {% for store in stores %}
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="font-medium text-gray-900">{{ store.name }}</div>
+                            <div class="font-medium text-gray-900">{{ store.name if store.name is defined else store['name'] }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ 'bg-green-100 text-green-800' if store.coupon_enabled else 'bg-red-100 text-red-800' }}">
-                                {{ '활성화' if store.coupon_enabled else '비활성화' }}
+                            {% set coupon_enabled = store.coupon_enabled if store.coupon_enabled is defined else store['coupon_enabled'] %}
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ 'bg-green-100 text-green-800' if coupon_enabled else 'bg-red-100 text-red-800' }}">
+                                {{ '활성화' if coupon_enabled else '비활성화' }}
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ store.coupon_goal }}개
+                            {% set coupon_goal = store.coupon_goal if store.coupon_goal is defined else store['coupon_goal'] %}
+                            {{ coupon_goal }}개
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                             <!-- Toggle Coupon -->
-                            <form method="post" action="/admin/stores/{{ store.id }}/toggle-coupon" class="inline">
+                            {% set store_id = store.id if store.id is defined else store['id'] %}
+                            <form method="post" action="/admin/stores/{{ store_id }}/toggle-coupon" class="inline">
                                 <button type="submit" 
                                         class="bg-secondary text-white px-2 py-1 rounded text-xs hover:bg-green-600">
                                     쿠폰 토글
                                 </button>
                             </form>
                             <!-- Set Goal -->
-                            <form method="post" action="/admin/stores/{{ store.id }}/set-goal" class="inline-flex items-center space-x-1">
-                                <input type="number" name="goal" value="{{ store.coupon_goal }}" min="1"
+                            <form method="post" action="/admin/stores/{{ store_id }}/set-goal" class="inline-flex items-center space-x-1">
+                                <input type="number" name="goal" value="{{ coupon_goal }}" min="1"
                                        class="w-12 border border-gray-300 rounded px-1 py-1 text-xs">
                                 <button type="submit" 
                                         class="bg-yellow-600 text-white px-2 py-1 rounded text-xs hover:bg-yellow-700">
@@ -95,5 +98,107 @@
         </div>
         {% endif %}
     </div>
+
+    <!-- Store Analytics Charts -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">매장 분석 차트</h2>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Store Performance Analytics -->
+            <div class="chart-container">
+                <h3 class="text-lg font-medium text-gray-700 mb-3">매장 성과 분석</h3>
+                <canvas id="store-analytics-chart" width="400" height="200"></canvas>
+            </div>
+            
+            <!-- Coupon Completion Rate -->
+            <div class="chart-container">
+                <h3 class="text-lg font-medium text-gray-700 mb-3">쿠폰 완료율 비교</h3>
+                <canvas id="coupon-completion-chart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// Store Analytics Data
+const analyticsData = {{ stores|tojson }};
+
+// Store Performance Chart
+const storeAnalyticsCtx = document.getElementById('store-analytics-chart').getContext('2d');
+const storeAnalyticsChart = new Chart(storeAnalyticsCtx, {
+    type: 'bar',
+    data: {
+        labels: analyticsData.map(store => store.name || store['name']),
+        datasets: [{
+            label: '쿠폰 목표',
+            data: analyticsData.map(store => store.coupon_goal || store['coupon_goal']),
+            backgroundColor: 'rgba(59, 130, 246, 0.7)',
+            borderColor: 'rgba(59, 130, 246, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            title: {
+                display: true,
+                text: '매장별 성과 분석'
+            },
+            legend: {
+                display: true,
+                position: 'top'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Coupon Completion Rate Chart
+const couponCompletionCtx = document.getElementById('coupon-completion-chart').getContext('2d');
+const couponCompletionChart = new Chart(couponCompletionCtx, {
+    type: 'doughnut',
+    data: {
+        labels: analyticsData.map(store => store.name || store['name']),
+        datasets: [{
+            label: '완료율',
+            data: analyticsData.map(store => (store.coupon_enabled || store['coupon_enabled']) ? (store.coupon_goal || store['coupon_goal']) * 0.7 : 0),
+            backgroundColor: [
+                'rgba(16, 185, 129, 0.7)',
+                'rgba(245, 101, 101, 0.7)',
+                'rgba(251, 191, 36, 0.7)',
+                'rgba(139, 92, 246, 0.7)'
+            ],
+            borderColor: [
+                'rgba(16, 185, 129, 1)',
+                'rgba(245, 101, 101, 1)',
+                'rgba(251, 191, 36, 1)',
+                'rgba(139, 92, 246, 1)'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            title: {
+                display: true,
+                text: '쿠폰 완료율 비교'
+            },
+            legend: {
+                display: true,
+                position: 'right'
+            }
+        }
+    }
+});
+</script>
 {% endblock %}

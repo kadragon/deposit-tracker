@@ -429,6 +429,48 @@ def create_app(
                              total_amount=total_amount,
                              insufficient_balance_count=insufficient_balance_count)
 
+    @app.route('/payment-confirmation')
+    def payment_confirmation():
+        # Get confirmed payment details from session
+        confirmed_payments = session.get('confirmed_payments', {})
+        store_id = session.get('assignment_store_id', '')
+        
+        if not confirmed_payments:
+            return 'No confirmed payments found', 400
+        
+        # Get store information
+        store_name = ''
+        if store_repo and store_id:
+            store = store_repo.get_by_id(store_id)
+            raw_store_name = _get_value(store, 'name')
+            if raw_store_name:
+                store_name = str(escape(raw_store_name))
+        
+        # Prepare user payment data for template
+        user_payment_data = []
+        total_amount = 0
+        
+        for user_id, payment_info in confirmed_payments.items():
+            user = user_repo.get_by_id(user_id)
+            if user:
+                user_name = str(_get_value(user, 'name'))
+                amount = payment_info.get('amount', 0)
+                method = payment_info.get('method', 'deposit')
+                
+                user_payment_data.append({
+                    'user_id': user_id,
+                    'name': user_name,
+                    'amount': amount,
+                    'method': method
+                })
+                
+                total_amount += amount
+        
+        return render_template('payment_confirmation.html',
+                             user_payments=user_payment_data,
+                             store_name=store_name,
+                             total_amount=total_amount)
+
     @app.route('/select-payment-methods', methods=['POST'])
     def select_payment_methods():
         if not request.is_json:

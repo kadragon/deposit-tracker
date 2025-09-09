@@ -32,14 +32,8 @@ class TestAdminStoreManagement:
         with client.session_transaction() as sess:
             sess['admin_logged_in'] = True
         
-        store1 = Mock()
-        store1.name = 'Store1'
-        store1.coupon_enabled = True
-        store1.coupon_goal = 10
-        store2 = Mock()
-        store2.name = 'Store2'
-        store2.coupon_enabled = False
-        store2.coupon_goal = 5
+        store1 = {"id": "store1", "name": "Store1", "coupon_enabled": True, "coupon_goal": 10}
+        store2 = {"id": "store2", "name": "Store2", "coupon_enabled": False, "coupon_goal": 5}
         self.store_repo.list_all.return_value = [store1, store2]
         
         response = client.get('/admin/stores')
