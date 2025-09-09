@@ -84,7 +84,7 @@
 #### Test UI-5: Payment Confirmation ✅
 - [x] **should_render_payment_summary_cards** - 결제 요약 카드들
 - [x] **should_show_insufficient_balance_alerts** - 잔액 부족 경고
-- [ ] **should_render_payment_confirmation_flow** - 결제 확인 플로우
+- [x] **should_render_payment_confirmation_flow** - 결제 확인 플로우
 
 ### **Phase UI-3: 관리자 인터페이스** ✅
 
@@ -97,7 +97,7 @@
 #### Test UI-7: Store Management ✅ 
 - [x] **should_render_stores_list_with_actions** - 매장 목록 + 액션들
 - [x] **should_display_coupon_settings_toggles** - 쿠폰 설정 토글
-- [ ] **should_render_store_analytics_charts** - 매장 분석 차트 (차트 기능은 Phase 8)
+- [x] **should_render_store_analytics_charts** - 매장 분석 차트
 
 ---
 

@@ -171,7 +171,8 @@ def create_app(
             if file.filename == '':
                 return _json_error('no_file_selected', 'No file selected', 400)
 
-            text = ocr_service.extract_text_from_image(file.read())
+            content_bytes = file.read()
+            text = ocr_service.extract_text_from_image(content_bytes)
             store_name = ocr_service.parse_store_name(text)
             items = ocr_service.parse_items_and_prices(text)
 
@@ -186,6 +187,9 @@ def create_app(
             if not store_id:
                 return _json_error('store_not_found', 'Store not found', 404)
 
+            # Persist parsed data in session for follow-up steps
+            session['parsed_items'] = items or []
+
             # Compute total from parsed items (fallback to 0)
             try:
                 total_amount = sum(int(i.get('price', 0)) for i in items)
@@ -193,6 +197,7 @@ def create_app(
                 total_amount = 0
 
             # Redirect to confirmation with canonical identifiers
+            session['assignment_store_id'] = store_id
             return redirect(url_for('confirm_receipt', store_id=store_id, total=str(total_amount)))
 
         return render_template('upload.html')
@@ -322,9 +327,11 @@ def create_app(
                         user_amounts[user_id] = user_amounts.get(user_id, 0) + user_amount
                 else:
                     # Equal sharing if no ratio provided
-                    per_user_amount = item_total // len(shared_users)
-                    for user_id in shared_users:
-                        user_amounts[user_id] = user_amounts.get(user_id, 0) + per_user_amount
+                    if shared_users:
+                        per_user_amount = item_total // len(shared_users)
+                        for user_id in shared_users:
+                            user_amounts[user_id] = user_amounts.get(user_id, 0) + per_user_amount
+                    # If no shared_users provided, skip this assignment entry
             else:
                 # Individual assignment
                 user_id = assignment.get('user_id')
@@ -429,6 +436,48 @@ def create_app(
                              total_amount=total_amount,
                              insufficient_balance_count=insufficient_balance_count)
 
+    @app.route('/payment-confirmation')
+    def payment_confirmation():
+        # Get confirmed payment details from session
+        confirmed_payments = session.get('confirmed_payments', {})
+        store_id = session.get('assignment_store_id', '')
+        
+        if not confirmed_payments:
+            return 'No confirmed payments found', 400
+        
+        # Get store information
+        store_name = ''
+        if store_repo and store_id:
+            store = store_repo.get_by_id(store_id)
+            raw_store_name = _get_value(store, 'name')
+            if raw_store_name:
+                store_name = str(escape(raw_store_name))
+        
+        # Prepare user payment data for template
+        user_payment_data = []
+        total_amount = 0
+        
+        for user_id, payment_info in confirmed_payments.items():
+            user = user_repo.get_by_id(user_id)
+            if user:
+                user_name = str(_get_value(user, 'name'))
+                amount = payment_info.get('amount', 0)
+                method = payment_info.get('method', 'deposit')
+                
+                user_payment_data.append({
+                    'user_id': user_id,
+                    'name': user_name,
+                    'amount': amount,
+                    'method': method
+                })
+                
+                total_amount += amount
+        
+        return render_template('payment_confirmation.html',
+                             user_payments=user_payment_data,
+                             store_name=store_name,
+                             total_amount=total_amount)
+
     @app.route('/select-payment-methods', methods=['POST'])
     def select_payment_methods():
         if not request.is_json:
@@ -441,6 +490,11 @@ def create_app(
         # Store payment method selections in session
         session['payment_methods'] = user_payments
         session['payment_store_id'] = store_id
+        # Additionally keep a dict form for confirmation view compatibility
+        confirmed = {p.get('user_id'): {'amount': p.get('amount', 0), 'method': p.get('method', 'deposit')}
+                     for p in (user_payments or []) if p.get('user_id')}
+        session['confirmed_payments'] = confirmed
+        session['assignment_store_id'] = store_id or session.get('assignment_store_id', '')
         
         response_data = {
             'message': 'payment-methods-selected',
@@ -629,10 +683,18 @@ def create_app(
         if not session.get('admin_logged_in'):
             return redirect(url_for('admin_login'))
         
-        amount = request.form.get('amount')
+        amount_raw = request.form.get('amount')
+        try:
+            amount_dec = Decimal(str(amount_raw))
+        except (InvalidOperation, ValueError, TypeError):
+            flash('유효하지 않은 금액 형식입니다.', 'error')
+            return redirect(url_for('admin_users'))
+        if amount_dec <= 0:
+            flash('금액은 0보다 커야 합니다.', 'error')
+            return redirect(url_for('admin_users'))
         user = user_repo.get_by_id(user_id)
         if user:
-            user.add_deposit(Decimal(amount))
+            user.add_deposit(amount_dec)
             user_repo.save(user)
         return redirect(url_for('admin_users'))
     
@@ -759,7 +821,17 @@ def create_app(
         
         # Display all stores
         stores = store_repo.list_all()
-        return render_template('admin_stores.html', stores=stores)
+        # Convert store objects to dictionaries for JSON serialization in template
+        stores_data = []
+        for store in stores:
+            store_dict = {
+                'id': _get_value(store, 'id'),
+                'name': _get_value(store, 'name'),
+                'coupon_enabled': _get_value(store, 'coupon_enabled'),
+                'coupon_goal': _get_value(store, 'coupon_goal')
+            }
+            stores_data.append(store_dict)
+        return render_template('admin_stores.html', stores=stores_data)
     
     @app.route('/admin/stores/<store_id>/toggle-coupon', methods=['POST'])
     def admin_toggle_coupon(store_id):

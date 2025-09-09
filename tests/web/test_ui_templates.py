@@ -444,8 +444,8 @@ def test_should_render_stores_list_with_actions():
     mock_coupon_repo = Mock()
     mock_store_repo = Mock()
     mock_store_repo.list_all.return_value = [
-        Mock(name="스타벅스", coupon_enabled=True, coupon_goal=10),
-        Mock(name="맥도날드", coupon_enabled=False, coupon_goal=5)
+        {"id": "store1", "name": "스타벅스", "coupon_enabled": True, "coupon_goal": 10},
+        {"id": "store2", "name": "맥도날드", "coupon_enabled": False, "coupon_goal": 5}
     ]
     mock_ocr_service = Mock()
     
@@ -474,7 +474,7 @@ def test_should_display_coupon_settings_toggles():
     mock_coupon_repo = Mock()
     mock_store_repo = Mock()
     mock_store_repo.list_all.return_value = [
-        Mock(name="스타벅스", coupon_enabled=True, coupon_goal=10)
+        {"id": "store1", "name": "스타벅스", "coupon_enabled": True, "coupon_goal": 10}
     ]
     mock_ocr_service = Mock()
     
@@ -938,3 +938,167 @@ def test_should_show_insufficient_balance_alerts():
         # Test for overall alert styling consistency
         assert ('bg-red-50' in html or 'bg-red-100' in html)  # Light red backgrounds
         assert ('border-red-200' in html or 'border-red-300' in html)  # Red borders
+
+
+def test_should_render_payment_confirmation_flow():
+    """Test that payment confirmation flow renders with proper UI elements"""
+    mock_user_repo = Mock()
+    # Set up mock users with different balance scenarios
+    mock_users = {}
+    for user_data in [
+        {'id': 'user1', 'name': '김철수', 'deposit': 25000},
+        {'id': 'user2', 'name': '이영희', 'deposit': 15000}, 
+        {'id': 'user3', 'name': '박민수', 'deposit': 8000}
+    ]:
+        mock_user = Mock()
+        mock_user.id = user_data['id']
+        mock_user.name = user_data['name']
+        mock_user.deposit = user_data['deposit']
+        mock_users[user_data['id']] = mock_user
+        
+    def mock_get_by_id(user_id):
+        return mock_users.get(user_id)
+    
+    mock_user_repo.get_by_id = mock_get_by_id
+    mock_receipt_repo = Mock()
+    mock_coupon_repo = Mock()
+    mock_store_repo = Mock()
+    
+    # Mock store
+    mock_store = Mock()
+    mock_store.name = '스타벅스'
+    mock_store_repo.get_by_id.return_value = mock_store
+    
+    mock_ocr_service = Mock()
+    
+    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, 
+                     coupon_repo=mock_coupon_repo, store_repo=mock_store_repo, ocr_service=mock_ocr_service)
+    
+    with app.test_client() as client:
+        # Set up session with confirmed payment details
+        with client.session_transaction() as sess:
+            sess['confirmed_payments'] = {
+                'user1': {'amount': 12000, 'method': 'deposit'},
+                'user2': {'amount': 8000, 'method': 'deposit'},
+                'user3': {'amount': 6000, 'method': 'cash'}  # Mixed payment method
+            }
+            sess['assignment_store_id'] = 'store1'
+        
+        response = client.get('/payment-confirmation')
+        html = response.get_data(as_text=True)
+        
+        # Test basic response
+        assert response.status_code == 200
+        assert '<!DOCTYPE html>' in html
+        
+        # Test for payment confirmation flow structure
+        assert ('confirmation' in html.lower() or '확인' in html)
+        assert ('payment' in html.lower() or '결제' in html)
+        
+        # Test for step-by-step confirmation flow
+        assert ('step' in html.lower() or '단계' in html)
+        assert ('progress' in html.lower() or '진행' in html)
+        
+        # Test for final payment summary before processing
+        assert '김철수' in html
+        assert '이영희' in html  
+        assert '박민수' in html
+        
+        # Test for payment amounts and methods
+        assert ('12,000' in html or '12000' in html)
+        assert ('8,000' in html or '8000' in html)
+        assert ('6,000' in html or '6000' in html)
+        assert 'deposit' in html.lower() or '예치금' in html
+        assert 'cash' in html.lower() or '현금' in html
+        
+        # Test for final confirmation button
+        assert ('confirm' in html.lower() or '최종 확인' in html or '결제 진행' in html)
+        
+        # Test for cancel/back option
+        assert ('cancel' in html.lower() or '취소' in html or 'back' in html.lower())
+        
+        # Test for payment processing loader/spinner elements
+        assert ('processing' in html.lower() or '처리' in html or 'spinner' in html.lower())
+        
+        # Test for success/failure message containers
+        assert ('success' in html.lower() or '성공' in html or 'alert' in html.lower())
+        
+        # Test for JavaScript payment processing functionality
+        assert '<script>' in html and '</script>' in html
+        assert ('processPayment' in html or 'payment' in html.lower())
+        
+        # Test for form submission with proper method
+        assert 'form' in html.lower()
+        assert 'method="post"' in html
+
+
+def test_should_render_store_analytics_charts():
+    """Test that store management page renders analytics charts for store data visualization"""
+    mock_user_repo = Mock()
+    mock_receipt_repo = Mock()
+    mock_coupon_repo = Mock()
+    mock_store_repo = Mock()
+    
+    # Mock stores with analytics data - use dictionaries that are JSON serializable
+    mock_stores = [
+        {"id": "store1", "name": "스타벅스", "coupon_enabled": True, "coupon_goal": 10},
+        {"id": "store2", "name": "맥도날드", "coupon_enabled": False, "coupon_goal": 5},
+        {"id": "store3", "name": "서브웨이", "coupon_enabled": True, "coupon_goal": 8}
+    ]
+    mock_store_repo.list_all.return_value = mock_stores
+    
+    mock_ocr_service = Mock()
+    
+    app = create_app(user_repo=mock_user_repo, receipt_repo=mock_receipt_repo, 
+                     coupon_repo=mock_coupon_repo, store_repo=mock_store_repo, ocr_service=mock_ocr_service)
+    
+    with app.test_client() as client:
+        # Login to admin first
+        with client.session_transaction() as sess:
+            sess['admin_logged_in'] = True
+        
+        response = client.get('/admin/stores')
+        html = response.get_data(as_text=True)
+        
+        # Test basic response
+        assert response.status_code == 200
+        assert '<!DOCTYPE html>' in html
+        
+        # Test for Chart.js library inclusion
+        assert ('chart.js' in html.lower() or 'chartjs' in html.lower())
+        
+        # Test for chart container elements
+        assert ('canvas' in html.lower() or 'chart-container' in html.lower())
+        
+        # Test for store analytics chart types
+        assert ('store-analytics' in html.lower() or 'analytics' in html.lower())
+        
+        # Test for chart data preparation
+        assert ('analytics-data' in html.lower() or 'chartdata' in html.lower() or 'analyticsdata' in html.lower())
+        
+        # Test for store performance metrics
+        assert ('performance' in html.lower() or '성과' in html or '분석' in html)
+        
+        # Test for coupon completion rate chart
+        assert ('completion' in html.lower() or '완료율' in html or 'rate' in html.lower())
+        
+        # Test for store comparison chart
+        assert ('comparison' in html.lower() or '비교' in html)
+        
+        # Test for JavaScript chart initialization
+        assert '<script>' in html and '</script>' in html
+        assert ('new Chart' in html or 'Chart(' in html)
+        
+        # Test for chart configuration options
+        assert ('options' in html.lower() or 'config' in html.lower())
+        
+        # Test for responsive chart design
+        assert ('responsive' in html.lower() or 'maintainAspectRatio' in html)
+        
+        # Test for chart legend and labels
+        assert ('legend' in html.lower() or 'labels' in html.lower())
+        
+        # Test for store data visualization
+        assert '스타벅스' in html
+        assert '맥도날드' in html
+        assert '서브웨이' in html
